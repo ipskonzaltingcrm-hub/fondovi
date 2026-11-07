@@ -2,21 +2,19 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronsUpDown, Check } from "lucide-react";
+import { Search, ChevronDown, LogOut, ShieldCheck, User } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
-import { cn } from "@/lib/utils";
 
-const tenants = [
-  { id: "ips", naziv: "IPS Konzalting", role: "Operator" },
-  { id: "koprivnica", naziv: "Grad Koprivnica", role: "Pretplatnik" },
-  { id: "nedelisce", naziv: "Općina Nedelišće", role: "Pretplatnik" },
-];
-
-export function Topbar() {
+export function Topbar({
+  userEmail,
+  isSuperadmin,
+}: {
+  userEmail: string;
+  isSuperadmin: boolean;
+}) {
   const router = useRouter();
   const [q, setQ] = React.useState("");
   const [open, setOpen] = React.useState(false);
-  const [tenant, setTenant] = React.useState(tenants[0]);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/80 px-4 backdrop-blur md:px-6">
@@ -40,40 +38,46 @@ export function Topbar() {
         <div className="relative">
           <button
             onClick={() => setOpen((o) => !o)}
-            className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-2"
+            className="flex items-center gap-2 rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm hover:bg-surface-2"
           >
-            <span className="hidden text-muted sm:inline">Tenant:</span>
-            <span className="font-medium">{tenant.naziv}</span>
-            <ChevronsUpDown className="h-4 w-4 text-muted-2" />
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-soft text-brand-ink">
+              {isSuperadmin ? (
+                <ShieldCheck className="h-3.5 w-3.5" />
+              ) : (
+                <User className="h-3.5 w-3.5" />
+              )}
+            </span>
+            <span className="hidden max-w-[160px] truncate font-medium sm:inline">
+              {userEmail}
+            </span>
+            <ChevronDown className="h-4 w-4 text-muted-2" />
           </button>
           {open && (
             <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setOpen(false)}
-              />
-              <div className="absolute right-0 z-20 mt-1.5 w-60 rounded-lg border border-border bg-surface p-1.5 shadow-lg shadow-black/10">
-                {tenants.map((t) => (
+              <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+              <div className="absolute right-0 z-20 mt-1.5 w-64 rounded-lg border border-border bg-surface p-1.5 shadow-lg shadow-black/10">
+                <div className="px-2.5 py-2">
+                  <div className="truncate text-sm font-medium">{userEmail}</div>
+                  <div className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-2">
+                    {isSuperadmin ? (
+                      <>
+                        <ShieldCheck className="h-3 w-3 text-brand-ink" /> Superadmin
+                        (IPS)
+                      </>
+                    ) : (
+                      "Korisnik"
+                    )}
+                  </div>
+                </div>
+                <div className="my-1 h-px bg-border" />
+                <form action="/auth/signout" method="post">
                   <button
-                    key={t.id}
-                    onClick={() => {
-                      setTenant(t);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-2",
-                      t.id === tenant.id && "bg-surface-2",
-                    )}
+                    type="submit"
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-danger hover:bg-danger-soft"
                   >
-                    <div className="flex-1">
-                      <div className="font-medium">{t.naziv}</div>
-                      <div className="text-xs text-muted-2">{t.role}</div>
-                    </div>
-                    {t.id === tenant.id && (
-                      <Check className="h-4 w-4 text-brand-ink" />
-                    )}
+                    <LogOut className="h-4 w-4" /> Odjava
                   </button>
-                ))}
+                </form>
               </div>
             </>
           )}

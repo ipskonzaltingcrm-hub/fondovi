@@ -5,7 +5,6 @@ import type {
   FundingCall,
   Jls,
 } from "./types";
-import { calls, jlsList } from "./mock-data";
 import { daysUntil } from "./utils";
 
 export const levelLabel: Record<CallLevel, string> = {
@@ -45,14 +44,6 @@ export function deadlineState(call: FundingCall): {
   if (d <= 7) return { kind: "hitno", days: d, label: `Još ${d} d` };
   if (d <= 21) return { kind: "uskoro", days: d, label: `Još ${d} d` };
   return { kind: "otvoreno", days: d, label: `Još ${d} d` };
-}
-
-export function getCall(id: string): FundingCall | undefined {
-  return calls.find((c) => c.id === id);
-}
-
-export function getJls(id: string): Jls | undefined {
-  return jlsList.find((j) => j.id === id);
 }
 
 export interface MatchResult {
@@ -110,7 +101,7 @@ export function matchCall(call: FundingCall, jls: Jls): MatchResult {
 }
 
 /** Rangirani pozivi za zadani JLS (najrelevantniji prvi). */
-export function matchesForJls(jls: Jls): MatchResult[] {
+export function matchesForJls(calls: FundingCall[], jls: Jls): MatchResult[] {
   return calls
     .map((c) => matchCall(c, jls))
     .filter((m) => m.eligible)
@@ -118,7 +109,7 @@ export function matchesForJls(jls: Jls): MatchResult[] {
 }
 
 /** Agregatni brojevi za dashboard. */
-export function dashboardStats() {
+export function dashboardStats(calls: FundingCall[], jlsBroj: number) {
   const otvoreni = calls.filter((c) => c.status === "otvoren");
   const najave = calls.filter((c) => c.status === "najava");
   const hitni = otvoreni.filter((c) => {
@@ -131,6 +122,6 @@ export function dashboardStats() {
     najaveBroj: najave.length,
     hitniBroj: hitni.length,
     ukupnaAlokacija: alokacija,
-    jlsBroj: jlsList.length,
+    jlsBroj,
   };
 }

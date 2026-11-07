@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { CallsExplorer } from "@/components/pozivi/calls-explorer";
-import { calls } from "@/lib/mock-data";
+import { getCalls } from "@/lib/data";
 
 export const metadata = { title: "Natječaji" };
 
@@ -10,6 +10,7 @@ export default async function PoziviPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+  const calls = await getCalls();
 
   return (
     <div>

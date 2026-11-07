@@ -16,7 +16,8 @@ import {
   LevelBadge,
   StatusBadge,
 } from "@/components/pozivi/call-badges";
-import { getJls, matchesForJls } from "@/lib/domain";
+import { matchesForJls } from "@/lib/domain";
+import { getCalls, getJlsBySlug } from "@/lib/data";
 import { formatRange } from "@/lib/utils";
 
 const tipLabel = { grad: "Grad", opcina: "Općina", zupanija: "Županija" } as const;
@@ -27,10 +28,11 @@ export default async function JlsProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const jls = getJls(id);
+  const jls = await getJlsBySlug(id);
   if (!jls) notFound();
 
-  const matches = matchesForJls(jls);
+  const calls = await getCalls();
+  const matches = matchesForJls(calls, jls);
   const otvoreni = matches.filter((m) => m.call.status === "otvoren");
 
   return (

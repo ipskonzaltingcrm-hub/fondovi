@@ -20,8 +20,8 @@ import {
   LevelBadge,
   StatusBadge,
 } from "@/components/pozivi/call-badges";
-import { applicantLabel, getCall, matchCall } from "@/lib/domain";
-import { jlsList } from "@/lib/mock-data";
+import { applicantLabel, matchCall } from "@/lib/domain";
+import { getCallBySlug, getJlsProfiles } from "@/lib/data";
 import { formatDate, formatEur, formatRange } from "@/lib/utils";
 
 export default async function CallDetailPage({
@@ -30,10 +30,11 @@ export default async function CallDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const call = getCall(id);
+  const call = await getCallBySlug(id);
   if (!call) notFound();
 
-  const relevant = jlsList
+  const jlsProfiles = await getJlsProfiles();
+  const relevant = jlsProfiles
     .map((j) => ({ jls: j, m: matchCall(call, j) }))
     .filter((r) => r.m.eligible)
     .sort((a, b) => b.m.score - a.m.score);

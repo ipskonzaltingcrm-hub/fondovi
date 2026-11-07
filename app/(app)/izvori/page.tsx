@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { sources } from "@/lib/mock-data";
+import { getSources } from "@/lib/data";
 
 export const metadata = { title: "Izvori" };
 
@@ -13,7 +13,8 @@ const statusMeta = {
   pauziran: { tone: "neutral" as const, icon: CirclePause, label: "Pauziran" },
 };
 
-export default function IzvoriPage() {
+export default async function IzvoriPage() {
+  const sources = await getSources();
   const fmt = new Intl.DateTimeFormat("hr-HR", {
     day: "2-digit",
     month: "2-digit",
@@ -102,8 +103,8 @@ export default function IzvoriPage() {
       </Card>
 
       <p className="mt-4 text-xs text-muted-2">
-        Napomena: ovo je skica (Faza 0, mock podaci). Stvarni parseri i raspored
-        dolaze u Fazi 2.
+        Napomena: izvori se čitaju iz baze. Automatski parseri i raspored
+        povlačenja dolaze u Fazi 2.
       </p>
     </div>
   );

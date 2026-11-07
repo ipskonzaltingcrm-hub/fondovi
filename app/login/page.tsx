@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { Mail, ArrowRight, Radar, CheckCircle2 } from "lucide-react";
+import { Radar, CheckCircle2 } from "lucide-react";
 import { Logo } from "@/components/layout/logo";
-import { ButtonLink } from "@/components/ui/button";
+import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata = { title: "Prijava" };
 
@@ -62,28 +61,11 @@ export default function LoginPage() {
             Unesite službeni email vaše organizacije.
           </p>
 
-          <form className="mt-7 space-y-4">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Email</label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-2" />
-                <input
-                  type="email"
-                  placeholder="ime@grad-primjer.hr"
-                  className="h-11 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none placeholder:text-muted-2 focus:border-brand focus:ring-2 focus:ring-ring/30"
-                />
-              </div>
-            </div>
-
-            <ButtonLink href="/dashboard" size="lg" className="w-full">
-              Pošalji poveznicu za prijavu <ArrowRight className="h-4 w-4" />
-            </ButtonLink>
-          </form>
+          <LoginForm />
 
           <p className="mt-4 text-center text-xs text-muted-2">
-            Prijava putem magic-link emaila (Supabase Auth, Faza 1).
-            <br />
-            Skica — klik vodi na demo nadzornu ploču.
+            Prijava putem magic-link emaila. Bez lozinke — dobivate poveznicu na
+            email.
           </p>
         </div>
       </div>

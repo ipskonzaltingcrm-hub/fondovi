@@ -11,14 +11,18 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { DeadlinePill, StatusBadge } from "@/components/pozivi/call-badges";
 import { ButtonLink } from "@/components/ui/button";
-import { calls, jlsList } from "@/lib/mock-data";
+import { getCalls, getJlsProfiles } from "@/lib/data";
 import { dashboardStats, deadlineState } from "@/lib/domain";
 import { daysUntil, formatDate, formatEur } from "@/lib/utils";
 
 export const metadata = { title: "Pregled" };
 
-export default function DashboardPage() {
-  const stats = dashboardStats();
+export default async function DashboardPage() {
+  const [calls, jlsProfiles] = await Promise.all([
+    getCalls(),
+    getJlsProfiles(),
+  ]);
+  const stats = dashboardStats(calls, jlsProfiles.length);
 
   const hitni = calls
     .filter((c) => {

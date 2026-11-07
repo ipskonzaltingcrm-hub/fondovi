@@ -3,12 +3,16 @@ import { Users, MapPin, Sprout, ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { jlsList } from "@/lib/mock-data";
+import { getCalls, getJlsProfiles } from "@/lib/data";
 import { matchesForJls } from "@/lib/domain";
 
 export const metadata = { title: "Klijenti (JLS)" };
 
-export default function KlijentiPage() {
+export default async function KlijentiPage() {
+  const [jlsProfiles, calls] = await Promise.all([
+    getJlsProfiles(),
+    getCalls(),
+  ]);
   return (
     <div>
       <PageHeader
@@ -17,8 +21,8 @@ export default function KlijentiPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {jlsList.map((jls) => {
-          const matches = matchesForJls(jls);
+        {jlsProfiles.map((jls) => {
+          const matches = matchesForJls(calls, jls);
           const otvoreni = matches.filter((m) => m.call.status === "otvoren");
           return (
             <Card
