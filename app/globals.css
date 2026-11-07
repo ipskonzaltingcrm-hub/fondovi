@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+/* Dark mode driven by a `.dark` class on <html> (set before paint, see layout). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------ */
+/*  IPS Radar — design tokens                                          */
+/*  Brand (iz www.ips-konzalting.hr): zelena #72A335, šumska #457B43,  */
+/*  svijetla zelena #6EBD40, ink #181818.                              */
+/* ------------------------------------------------------------------ */
+:root {
+  /* surfaces & text (light) */
+  --background: #f6f8f3;
+  --surface: #ffffff;
+  --surface-2: #eef2e8;
+  --surface-3: #e4ebdb;
+  --border: #e0e6d8;
+  --border-strong: #cdd6c0;
+  --foreground: #181818;
+  --muted: #586055;
+  --muted-2: #868f80;
+
+  /* brand */
+  --brand: #72a335;         /* primarni zeleni (fill, veliki elementi) */
+  --brand-ink: #3f6b24;     /* zeleni za tekst na svijetlom (AA) */
+  --brand-deep: #457b43;    /* šumska zelena */
+  --brand-bright: #6ebd40;  /* svijetla / success akcent */
+  --brand-contrast: #ffffff;
+  --brand-soft: #eaf3dc;    /* vrlo svijetla podloga zelene */
+
+  /* semantic */
+  --info: #1863dc;
+  --info-soft: #e5edfc;
+  --warning: #b8780a;
+  --warning-soft: #fbf1dd;
+  --danger: #c0392b;
+  --danger-soft: #fbe6e3;
+  --success: #457b43;
+  --success-soft: #e4f1dd;
+
+  --ring: #72a335;
+  --radius: 0.8rem;
+  --shadow-color: 32 44 20;
+}
+
+.dark {
+  --background: #0f110e;
+  --surface: #171a15;
+  --surface-2: #1e221b;
+  --surface-3: #262b22;
+  --border: #2a2f26;
+  --border-strong: #3a4034;
+  --foreground: #ecefe8;
+  --muted: #a7ae9f;
+  --muted-2: #7b8275;
+
+  --brand: #86c440;
+  --brand-ink: #9fd15a;
+  --brand-deep: #6ebd40;
+  --brand-bright: #8ed455;
+  --brand-contrast: #10140c;
+  --brand-soft: #1f2b14;
+
+  --info: #5a93ff;
+  --info-soft: #152238;
+  --warning: #e0a53a;
+  --warning-soft: #2e2510;
+  --danger: #f0776a;
+  --danger-soft: #331814;
+  --success: #6ebd40;
+  --success-soft: #16240f;
+
+  --ring: #86c440;
+  --shadow-color: 0 0 0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-bright: var(--brand-bright);
+  --color-brand-contrast: var(--brand-contrast);
+  --color-brand-soft: var(--brand-soft);
+
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 0.35rem);
+  --radius-md: calc(var(--radius) - 0.2rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.4rem);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--brand);
+  color: var(--brand-contrast);
+}
+
+/* Tabularne znamenke za rokove / iznose */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fini scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Suptilni "grid" pattern za hero površine */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 0.4s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
