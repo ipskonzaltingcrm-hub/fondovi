@@ -64,8 +64,7 @@ export default function LoginPage() {
           <LoginForm />
 
           <p className="mt-4 text-center text-xs text-muted-2">
-            Bez lozinke — na email dobivate jednokratni 6-znamenkasti kod za
-            prijavu.
+            Bez lozinke — na email dobivate jednokratni kod za prijavu.
           </p>
         </div>
       </div>

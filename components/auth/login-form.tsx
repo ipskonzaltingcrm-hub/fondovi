@@ -50,7 +50,7 @@ export function LoginForm() {
   async function verifyCode(e: React.FormEvent) {
     e.preventDefault();
     const token = code.trim();
-    if (token.length < 6) return;
+    if (token.length < 6) return; // kod je 6–8 znamenki, ovisno o Supabase postavci
     setBusy(true);
     setError("");
 
@@ -75,9 +75,9 @@ export function LoginForm() {
     return (
       <form onSubmit={verifyCode} className="mt-7 space-y-4">
         <div className="rounded-lg border border-border bg-surface-2 p-4 text-sm text-muted">
-          Poslali smo <span className="font-medium text-foreground">6-znamenkasti kod</span> na{" "}
-          <span className="font-medium text-foreground">{email}</span>. Upišite ga
-          ispod. (Provjerite i spam/neželjenu poštu.)
+          Poslali smo <span className="font-medium text-foreground">kod za prijavu</span> na{" "}
+          <span className="font-medium text-foreground">{email}</span>. Upišite
+          cijeli kod iz emaila. (Provjerite i spam/neželjenu poštu.)
         </div>
 
         <div>
@@ -93,8 +93,8 @@ export function LoginForm() {
               autoComplete="one-time-code"
               required
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="123456"
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="npr. 73218868"
               autoFocus
               className="h-11 w-full rounded-md border border-border bg-background pl-9 pr-3 text-lg tracking-[0.3em] tabular outline-none placeholder:tracking-normal placeholder:text-muted-2 focus:border-brand focus:ring-2 focus:ring-ring/30"
             />
