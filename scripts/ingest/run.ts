@@ -7,6 +7,15 @@ import { adapters } from "./sources";
 import { toCallRow } from "./util";
 import type { CallRow, SourceAdapter } from "./types";
 
+// Lokalno: učitaj .env.local (u CI-u varijable dolaze iz GitHub Secreta).
+try {
+  (process as unknown as { loadEnvFile?: (p?: string) => void }).loadEnvFile?.(
+    ".env.local",
+  );
+} catch {
+  /* nema .env.local (npr. CI) — koristi postojeće env varijable */
+}
+
 // Polja čije promjene bilježimo u call_changes (za "što se promijenilo").
 const TRACKED: (keyof CallRow)[] = ["status", "rok_prijave", "iznos_max", "naslov"];
 
