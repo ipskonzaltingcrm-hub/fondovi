@@ -93,14 +93,14 @@ function NavLink({
       className={cn(
         "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active
-          ? "bg-brand-soft text-brand-ink"
+          ? "bg-brand text-brand-contrast shadow-sm"
           : "text-muted hover:bg-surface-2 hover:text-foreground",
       )}
     >
       <Icon
         className={cn(
           "h-[18px] w-[18px] shrink-0",
-          active ? "text-brand-ink" : "text-muted-2 group-hover:text-foreground",
+          active ? "text-brand-contrast" : "text-muted-2 group-hover:text-foreground",
         )}
       />
       <span className="flex-1">{label}</span>

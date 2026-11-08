@@ -14,8 +14,8 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-ink p-10 text-white lg:flex"
-        style={{ background: "linear-gradient(150deg, #1c2b12 0%, #181818 55%, #0f110e 100%)" }}
+      <div className="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex"
+        style={{ background: "linear-gradient(150deg, #0b1f4d 0%, #0a1430 55%, #070c1c 100%)" }}
       >
         <div className="bg-grid absolute inset-0 opacity-40" aria-hidden />
         <div className="relative">

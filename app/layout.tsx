@@ -25,7 +25,8 @@ export const metadata: Metadata = {
 };
 
 // Spriječi bljesak pogrešne teme (postavi .dark prije crtanja).
-const themeScript = `(function(){try{var t=localStorage.getItem('jlsr-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||(!t&&m)){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+// Zadani izgled je tamnoplavi (EU). Dark osim ako je korisnik izričito odabrao 'light'.
+const themeScript = `(function(){try{var t=localStorage.getItem('jlsr-theme');if(t!=='light'){document.documentElement.classList.add('dark');}}catch(e){document.documentElement.classList.add('dark');}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
