@@ -16,12 +16,12 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "JLS Radar — natječaji i poticaji za JLS",
-    template: "%s · JLS Radar",
+    default: "EU Radar — natječaji i poticaji za JLS",
+    template: "%s · EU Radar",
   },
   description:
     "Radar EU i nacionalnih natječaja za jedinice lokalne samouprave — gradove, općine i županije. Praćenje poziva, rokova i prihvatljivosti na jednom mjestu.",
-  applicationName: "JLS Radar",
+  applicationName: "EU Radar",
 };
 
 // Spriječi bljesak pogrešne teme (postavi .dark prije crtanja).

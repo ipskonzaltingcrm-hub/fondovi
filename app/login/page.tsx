@@ -24,7 +24,7 @@ export default function LoginPage() {
               <Radar className="h-5 w-5 text-brand-contrast" />
             </div>
             <span className="font-display text-base font-bold">
-              JLS <span className="text-brand-bright">Radar</span>
+              EU <span className="text-brand-bright">Radar</span>
             </span>
           </div>
         </div>

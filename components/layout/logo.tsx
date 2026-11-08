@@ -27,7 +27,7 @@ export function Logo({ className }: { className?: string }) {
       <LogoMark />
       <div className="leading-none">
         <div className="font-display text-[15px] font-bold tracking-tight">
-          JLS <span className="text-brand-ink">Radar</span>
+          EU <span className="text-brand-ink">Radar</span>
         </div>
         <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-2">
           IPS Konzalting
