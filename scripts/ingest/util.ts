@@ -23,8 +23,8 @@ export function parseDate(input?: string | null): string | null {
   // ISO (možda s vremenom)
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-  // HR: dd.mm.yyyy. ili dd/mm/yyyy
-  const hr = s.match(/(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/);
+  // HR: dd.mm.yyyy. ili dd/mm/yyyy (toleriraj razmake: "13. 10. 2026")
+  const hr = s.match(/(\d{1,2})\s*[.\/]\s*(\d{1,2})\s*[.\/]\s*(\d{4})/);
   if (hr) {
     const d = hr[1].padStart(2, "0");
     const m = hr[2].padStart(2, "0");

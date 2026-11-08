@@ -1,4 +1,5 @@
 import type { SourceAdapter } from "../types";
+import { ruralnirazvoj } from "./ruralnirazvoj";
 
 /* ------------------------------------------------------------------ */
 /*  Registar izvora. Dodavanje novog izvora = nova datoteka adaptera   */
@@ -7,5 +8,6 @@ import type { SourceAdapter } from "../types";
 /* ------------------------------------------------------------------ */
 
 export const adapters: SourceAdapter[] = [
-  // npr. fzoeu, eufondovi, esf, apprrr, eu-funding-tenders — dodaje se nakon recona.
+  ruralnirazvoj,
+  // sljedeći: eu-funding-tenders (SEDIA), fzoeu, eufondovi …
 ];

@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-08**.
+> Zadnje ažurirano: **2026-11-08** (dodan ingestion framework + prvi adapter).
 
 ---
 
@@ -72,8 +72,10 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - **Vizualni identitet: EU tamnoplava + zlatna** (dark kao zadano), EU logo (zvjezdice + radar).
 - Seed podaci (demo): 14 natječaja, 5 JLS profila, 7 izvora, 1 tenant (ips).
 
-### ⏳ Faza 2 — Pravi podaci + produkcijski email + domena (SLJEDEĆE, vidi §9)
-- Automatsko povlačenje (ingestion/scraping) natječaja iz službenih izvora (GitHub Actions, raspored).
+### ⏳ Faza 2 — Pravi podaci + produkcijski email + domena (U TIJEKU, vidi §9 i §12)
+- **Ingestion:** ✅ framework + raspored (GitHub Actions) + **prvi adapter `ruralnirazvoj` radi**
+  (parsira 57 aktualnih poziva, 0 bez roka). ⏳ preostaje: postaviti `SUPABASE_SERVICE_ROLE_KEY`
+  (lokalno + GitHub Secret) za upis u bazu, pa dodati sljedeće izvore (SEDIA, FZOEU, eufondovi).
 - Custom SMTP (slanje s `@ips-konzalting.hr` → bolja dostava, bez malog limita ugrađenog maila).
 - Spajanje custom domene `fondovi.ips-konzalting.hr` + isključivanje Vercel zaštite.
 
@@ -212,3 +214,47 @@ Filtar "JLS prihvatljiv prijavitelj" — ključne riječi: JLS, JLP(R)S, grad, o
 - Detaljni ID-evi i "ne dirati" također su u Claude memoriji projekta (`infra-ids.md`).
 - Projektni zadatak (šira specifikacija): `docs/PROJEKTNI-ZADATAK.md`. Prošireni popis izvora: `docs/IZVORI-JLS.md`.
 - **Ažuriraj ovaj dokument** kad se promijeni faza, infrastruktura ili neka ključna odluka; podigni datum na vrhu.
+
+---
+
+## 12. Ingestion (automatsko povlačenje natječaja)
+
+**Kod:** `scripts/ingest/` · **raspored:** `.github/workflows/ingest.yml` (cron svakih 6 h + ručno).
+
+### Arhitektura
+- `types.ts` — `RawCall` (što adapter vrati) i `SourceAdapter` (ugovor izvora).
+- `util.ts` — `slugify`, `parseDate` (ISO + HR "dd.mm.yyyy" i "13. 10. 2026"), `statusFromDeadline`,
+  `contentHash` (sha1 nad značajnim poljima), `toCallRow`, `httpGet` (timeout + pristojan User-Agent).
+- `supabase.ts` — **service-role** klijent (zaobilazi RLS; samo CI/lokalno, nikad u pregledniku).
+- `run.ts` — za svaki adapter: `ensureSource` → `fetchCalls` → normaliziraj → **upsert po `slug`** →
+  promjene (`status/rok_prijave/iznos_max/naslov`) u `call_changes` → ažuriraj `sources`
+  (`zadnje_povlacenje`, `poziva_ukupno`, `status`). Greška jednog izvora ne ruši ostale.
+- `sources/index.ts` — registar adaptera.
+
+### Dodavanje novog izvora
+1. Napravi `scripts/ingest/sources/<slug>.ts` koji izvozi `SourceAdapter` s `fetchCalls()`.
+2. `slug` mora odgovarati `sources.slug` u bazi (postojeći: `esf`, `eufondovi`, `euribarstvo`,
+   `fzoeu`, `interreg-si-hr`, `razvoj-gov`, `ruralnirazvoj`).
+3. Uvezi ga u `sources/index.ts`.
+4. `npm run typecheck:ingest`; po potrebi test parse pa `npm run ingest`.
+
+### Pokretanje
+- Lokalno: u `.env.local` dodaj `SUPABASE_SERVICE_ROLE_KEY=…` pa `npm run ingest`.
+- CI: GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Settings → Secrets → Actions).
+  Service-role ključ: Supabase → Project Settings → API → `service_role` (TAJNO; nikad u git/preglednik).
+
+### Feasibility izvora (recon 2026-11-08) — redoslijed implementacije
+1. **ruralnirazvoj.hr** ✅ GOTOVO — statični HTML, čist (naslov/status/datum/rok). Nacionalni, ruralni (općine/LAG).
+2. **EU F&T (SEDIA)** — jedini pravi JSON API: `POST https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***`
+   s form-partom `query` (Elasticsearch bool). ⚠️ NE slati `languages` part (ruši u 500); dedupe po `callIdentifier`.
+   `type` 1=grants, status 31094501=Forthcoming/502=Open/503=Closed. `metadata.links[].startDate/endDate` = epoch-ms (objava/rok). EU-opseg.
+3. **APPRRR (apprrr.hr)** — WP+Elementor HTML (REST ne daje pozive), Open/Closed filter + datumi.
+4. **FZOEU** — bogat statični HTML, ALI točan URL ima ID: `/hr/nacionalni-javni-pozivi-i-natjecaji/1367`;
+   **rok često samo u PDF-u** (treba detalj). Najviše JLS-relevantnih poziva (energetska obnova, komunalno).
+5. **ESF+ (esf.hr)** — HTML lista OK, ali sadržaj zastario/preklapa se s eufondovi. Nizak prioritet.
+6. **eufondovi.gov.hr** — WP REST lako dohvatljiv, ali pozivi zakopani kao vijesti (bez call-typea,
+   rok/ref u tekstu) → keyword-filter + regex. Najmjerodavniji nacionalni, ali najteži za čist unos.
+
+> Napomena o JLS-relevantnosti: ruralni razvoj je djelomično JLS (ruralna infrastruktura, LAG/LEADER);
+> dio poziva cilja OPG/poljoprivrednike. Jezgra JLS vrijednosti je u **FZOEU** i **eufondovi (ITP/urbano)**.
+> `prihvatljivi` se iz liste ne može pouzdano iščitati → zasad prazno; profinjivanje matchinga kasnije.
