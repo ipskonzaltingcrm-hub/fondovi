@@ -64,8 +64,8 @@ export default function LoginPage() {
           <LoginForm />
 
           <p className="mt-4 text-center text-xs text-muted-2">
-            Prijava putem magic-link emaila. Bez lozinke — dobivate poveznicu na
-            email.
+            Bez lozinke — na email dobivate jednokratni 6-znamenkasti kod za
+            prijavu.
           </p>
         </div>
       </div>
