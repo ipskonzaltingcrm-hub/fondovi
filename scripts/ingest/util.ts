@@ -64,6 +64,11 @@ const HASH_FIELDS: (keyof CallRow)[] = [
   "url",
 ];
 
+/** Kratki (6-znak) hash — za jedinstvene externalId-eve kad su URL-segmenti dugi/slični. */
+export function shortHash(input: string): string {
+  return createHash("sha1").update(input).digest("hex").slice(0, 6);
+}
+
 export function contentHash(row: Omit<CallRow, "content_hash" | "source_id">): string {
   const payload = HASH_FIELDS.map((f) => JSON.stringify((row as never)[f] ?? null)).join("|");
   return createHash("sha1").update(payload).digest("hex");
@@ -122,6 +127,9 @@ async function fetchOnce(
         accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7",
         "accept-language": "hr-HR,hr;q=0.9,en;q=0.8",
+        // Zatvori vezu nakon odgovora — sprječava undici "keep-alive" assert
+        // na serverima koji neuredno gase vezu.
+        connection: "close",
         ...(init?.headers || {}),
       },
     });

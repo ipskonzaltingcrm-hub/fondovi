@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import type { CallStatus, RawCall, SourceAdapter } from "../types";
-import { httpGet } from "../util";
+import { httpGet, shortHash } from "../util";
 
 /* ------------------------------------------------------------------ */
 /*  euribarstvo.hr — EFPRA (Europski fond za pomorstvo, ribarstvo i     */
@@ -40,8 +40,10 @@ async function fetchCalls(): Promise<RawCall[]> {
     const url = a.attr("href")?.trim();
     if (!naslov || !url) return;
 
-    // stabilni id = zadnji segment putanje
-    const externalId = url.replace(/\/+$/, "").split("/").pop() || naslov;
+    // stabilni + JEDINSTVEN id: segment skraćen + hash URL-a (segmenti su dugi
+    // i dijele prefiks → spriječi slug-koliziju).
+    const seg = url.replace(/\/+$/, "").split("/").pop() || naslov;
+    const externalId = `${seg.slice(0, 48)}-${shortHash(url)}`;
 
     const statusText = $el
       .find(".status-natjecaja .box > div:not(.date_title)")

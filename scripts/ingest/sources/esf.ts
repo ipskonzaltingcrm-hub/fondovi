@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import type { CallStatus, RawCall, SourceAdapter } from "../types";
-import { httpGet } from "../util";
+import { httpGet, shortHash } from "../util";
 
 /* ------------------------------------------------------------------ */
 /*  esf.hr — ULJP / ESF+ (Učinkoviti ljudski potencijali).             */
@@ -42,8 +42,10 @@ async function fetchCalls(): Promise<RawCall[]> {
     const url = a.attr("href")?.trim();
     if (!naslov || !url) return;
 
-    // stabilni id = zadnji segment putanje
-    const externalId = url.replace(/\/+$/, "").split("/").pop() || naslov;
+    // stabilni + JEDINSTVEN id: segment skraćen + hash URL-a (spriječi koliziju
+    // slug-a kod vrlo dugih, sličnih naslova).
+    const seg = url.replace(/\/+$/, "").split("/").pop() || naslov;
+    const externalId = `${seg.slice(0, 48)}-${shortHash(url)}`;
 
     const status = mapStatus($el.find(".meta-state").first().text());
 
