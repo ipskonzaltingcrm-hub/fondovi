@@ -108,7 +108,7 @@ async function fetchOnce(
   init?: RequestInit & { timeoutMs?: number },
 ): Promise<Response> {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), init?.timeoutMs ?? 30000);
+  const t = setTimeout(() => ctrl.abort(), init?.timeoutMs ?? 15000);
   try {
     return await fetch(url, {
       ...init,
@@ -132,7 +132,7 @@ export async function httpGet(
   url: string,
   init?: RequestInit & { timeoutMs?: number; retries?: number },
 ): Promise<Response> {
-  const retries = init?.retries ?? 2;
+  const retries = init?.retries ?? 1;
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {

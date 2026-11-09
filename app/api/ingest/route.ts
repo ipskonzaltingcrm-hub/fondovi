@@ -9,7 +9,9 @@ export const maxDuration = 60;
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false; // bez tajne ništa ne pokrećemo (sprječava javno okidanje)
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  // Vercel Cron šalje Bearer; za ručni/test poziv prihvaćamo i ?key=<CRON_SECRET>.
+  if (req.headers.get("authorization") === `Bearer ${secret}`) return true;
+  return new URL(req.url).searchParams.get("key") === secret;
 }
 
 // Vercel Cron okida GET i automatski šalje 'Authorization: Bearer ${CRON_SECRET}'.
