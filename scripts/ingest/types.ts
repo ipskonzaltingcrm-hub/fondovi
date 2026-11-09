@@ -43,6 +43,8 @@ export type SourceAdapter = {
   url: string;
   tip?: "HTML" | "RSS" | "API";
   prioritet?: "jezgra" | "dodatni";
+  /** Gdje se smije vrtjeti: "global" (GitHub OK) ili "hr" (treba HR/EU IP → Vercel fra1). */
+  egress?: "global" | "hr";
   /** Zadane vrijednosti za sve pozive iz ovog izvora (npr. davatelj, level). */
   defaults?: Partial<RawCall>;
   fetchCalls(): Promise<RawCall[]>;

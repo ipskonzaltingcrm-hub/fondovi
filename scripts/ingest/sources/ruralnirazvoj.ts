@@ -79,6 +79,7 @@ export const ruralnirazvoj: SourceAdapter = {
   url: BASE,
   tip: "HTML",
   prioritet: "jezgra",
+  egress: "hr", // HR portal — geoblokira strane IP-eve → vrti se na Vercelu (fra1)
   defaults: {
     level: "nacionalna",
     davatelj: "APPRRR / Ministarstvo poljoprivrede",

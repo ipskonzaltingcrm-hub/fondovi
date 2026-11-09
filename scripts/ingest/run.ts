@@ -136,15 +136,25 @@ async function runAdapter(
 
 async function main() {
   const supabase = createServiceClient();
-  if (!adapters.length) {
-    console.log("Nema registriranih adaptera. Dodaj ih u scripts/ingest/sources/index.ts.");
+
+  // Odabir izvora po egress-u: GitHub → "global", Vercel(fra1) → "hr".
+  // Netagirani izvor se vrti svugdje. Bez env varijable: svi.
+  const egress = process.env.INGEST_EGRESS;
+  const selected = egress
+    ? adapters.filter((a) => !a.egress || a.egress === egress)
+    : adapters;
+
+  if (!selected.length) {
+    console.log(`Nema izvora za egress='${egress ?? "(svi)"}'.`);
     return;
   }
 
-  console.log(`Ingestion start — ${adapters.length} izvor(a)\n`);
+  console.log(
+    `Ingestion start — ${selected.length} izvor(a)${egress ? ` (egress=${egress})` : ""}\n`,
+  );
   let failures = 0;
 
-  for (const adapter of adapters) {
+  for (const adapter of selected) {
     try {
       const r = await runAdapter(supabase, adapter);
       console.log(
@@ -159,8 +169,8 @@ async function main() {
     }
   }
 
-  console.log(`\nGotovo. Neuspjelih izvora: ${failures}/${adapters.length}`);
-  if (failures === adapters.length) process.exit(1); // svi pali → fail CI
+  console.log(`\nGotovo. Neuspjelih izvora: ${failures}/${selected.length}`);
+  if (failures === selected.length) process.exit(1); // svi pali → fail CI
 }
 
 main().catch((e) => {

@@ -1,5 +1,6 @@
 import type { SourceAdapter } from "../types";
 import { ruralnirazvoj } from "./ruralnirazvoj";
+import { sedia } from "./sedia";
 
 /* ------------------------------------------------------------------ */
 /*  Registar izvora. Dodavanje novog izvora = nova datoteka adaptera   */
@@ -8,6 +9,7 @@ import { ruralnirazvoj } from "./ruralnirazvoj";
 /* ------------------------------------------------------------------ */
 
 export const adapters: SourceAdapter[] = [
-  ruralnirazvoj,
-  // sljedeći: eu-funding-tenders (SEDIA), fzoeu, eufondovi …
+  sedia, // egress: global (GitHub)
+  ruralnirazvoj, // egress: hr (Vercel fra1)
+  // sljedeći: fzoeu, eufondovi …
 ];
