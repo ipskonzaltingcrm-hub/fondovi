@@ -3,7 +3,7 @@ name: Ingest natječaja
 # Povlači aktualne pozive iz izvora u Supabase. Raspored + ručno pokretanje.
 on:
   schedule:
-    - cron: "0 */6 * * *" # svakih 6 sati (UTC)
+    - cron: "0 6 * * *" # jednom dnevno u 06:00 UTC (≈ 07h po Zagrebu zimi, 08h ljeti)
   workflow_dispatch: {}
 
 concurrency:

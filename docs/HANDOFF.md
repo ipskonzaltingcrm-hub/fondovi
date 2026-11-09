@@ -75,8 +75,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 ### ⏳ Faza 2 — Pravi podaci + produkcijski email + domena (U TIJEKU, vidi §9 i §12)
 - **Ingestion:** ✅ framework + raspored. **Tri adaptera**, baza očišćena od demo seeda → **98 pravih poziva**
   (ruralnirazvoj 55, FZOEU 29, SEDIA 14). Demo JLS "klijenti" (jls_profiles) namjerno ostavljeni (prikazuju matching).
-  - **SEDIA (EU F&T)** — ✅ `global`, **GitHub Actions automatika radi** (6 h), 14 JLS-relevantnih EU poziva.
-  - **ruralnirazvoj.hr** (55) i **FZOEU** (29) — ✅ `hr`, **Vercel Cron radi** (ruta `/api/ingest`, svakih 6h). Vercel env
+  - **SEDIA (EU F&T)** — ✅ `global`, **GitHub Actions automatika radi** (jednom dnevno ~07h), 14 JLS-relevantnih EU poziva.
+  - **ruralnirazvoj.hr** (55) i **FZOEU** (29) — ✅ `hr`, **Vercel Cron radi** (ruta `/api/ingest`, dnevno ~07h). Vercel env
     `SUPABASE_SERVICE_ROLE_KEY` + `CRON_SECRET` postavljeni; ručni test uspješan (fetched 55+29, 0 grešaka).
   - **GEO-IP (ispravka):** blokada NIJE čisto geografska — HR portali blokiraju **GitHub/Azure IP-eve**, ali **Vercelovi
     IP-evi prolaze** (test se izvršio u iad1/US i uspio). Zato: SEDIA→GitHub, HR izvori→Vercel. `egress` razdvajanje stoji.
@@ -246,10 +246,10 @@ Filtar "JLS prihvatljiv prijavitelj" — ključne riječi: JLS, JLP(R)S, grad, o
 ### Pokretanje i egress (gdje se vrti)
 - Svaki adapter ima `egress`: **`global`** (dostupno s GitHub IP-a) ili **`hr`** (treba HR/EU IP).
   `run.ts` filtrira po env `INGEST_EGRESS` (nije postavljen → svi izvori).
-- **GitHub Actions** (`.github/workflows/ingest.yml`, cron 6 h) postavlja `INGEST_EGRESS=global` → vrti SEDIA i druge globalne.
+- **GitHub Actions** (`.github/workflows/ingest.yml`, cron `0 6 * * *` = dnevno ~07h) postavlja `INGEST_EGRESS=global` → SEDIA i druge globalne.
 - **HR izvori** (`egress: "hr"`) se NE mogu vrtjeti s GitHuba (geo-IP) → **Vercel Cron u regiji fra1 (Frankfurt)**.
   ✅ RADI: Next API ruta `app/api/ingest/route.ts` (`runtime nodejs`, egress='hr', zaštita `CRON_SECRET`;
-  prihvaća i `?key=<CRON_SECRET>` za ručni/test poziv) + `vercel.json` cron (`/api/ingest`, `30 */6 * * *`) + proxy pušta `/api`.
+  prihvaća i `?key=<CRON_SECRET>` za ručni/test poziv) + `vercel.json` cron (`/api/ingest`, `5 6 * * *` = dnevno ~07h) + proxy pušta `/api`.
   Vercel env postavljeni. Ručni test (preko `?key`) uspješan: fetched 55+29, 0 grešaka, izvori označeni `aktivan`.
   NAPOMENA: `preferredRegion 'fra1'` se nije primijenio (izvršilo se u iad1) — nebitno jer Vercelov IP prolazi.
   Ručno pokretanje: Vercel → Crons → Run, ili GET `/api/ingest?key=<CRON_SECRET>`.
