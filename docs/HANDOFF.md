@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-08** (dodan ingestion framework + prvi adapter).
+> Zadnje ažurirano: **2026-11-09** (SEDIA adapter + GitHub automatika radi; geo-IP nalaz; Vercel za HR izvore).
 
 ---
 
@@ -73,9 +73,13 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - Seed podaci (demo): 14 natječaja, 5 JLS profila, 7 izvora, 1 tenant (ips).
 
 ### ⏳ Faza 2 — Pravi podaci + produkcijski email + domena (U TIJEKU, vidi §9 i §12)
-- **Ingestion:** ✅ framework + raspored (GitHub Actions) + **prvi adapter `ruralnirazvoj` radi**
-  (parsira 57 aktualnih poziva, 0 bez roka). ⏳ preostaje: postaviti `SUPABASE_SERVICE_ROLE_KEY`
-  (lokalno + GitHub Secret) za upis u bazu, pa dodati sljedeće izvore (SEDIA, FZOEU, eufondovi).
+- **Ingestion:** ✅ framework + raspored. Dva adaptera rade i pune bazu stvarnim podacima:
+  - **SEDIA (EU F&T)** — ✅ **GitHub Actions automatika radi** (svakih 6 h), 14 JLS-relevantnih EU poziva.
+  - **ruralnirazvoj.hr** — ✅ parsira 55 aktualnih poziva; napunjeno lokalno. Automatika preko **Vercela** (vidi niže).
+  - GitHub Secrets postavljeni (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` = Supabase **secret key** `sb_secret_...`).
+  - ⏳ **GEO-IP NALAZ:** hrvatski portali (ruralnirazvoj, vjerojatno i FZOEU/eufondovi) **blokiraju strane/datacentar IP-eve**
+    (GitHub = Azure) → "fetch failed". Zato je ingestion razdvojen po `egress`: **`global`** (SEDIA i sl. → GitHub) i
+    **`hr`** (HR portali → **Vercel Cron u fra1/Frankfurt**, EU IP). Vercel dio je SLJEDEĆI korak (vidi §12).
 - Custom SMTP (slanje s `@ips-konzalting.hr` → bolja dostava, bez malog limita ugrađenog maila).
 - Spajanje custom domene `fondovi.ips-konzalting.hr` + isključivanje Vercel zaštite.
 
@@ -238,16 +242,25 @@ Filtar "JLS prihvatljiv prijavitelj" — ključne riječi: JLS, JLP(R)S, grad, o
 3. Uvezi ga u `sources/index.ts`.
 4. `npm run typecheck:ingest`; po potrebi test parse pa `npm run ingest`.
 
-### Pokretanje
-- Lokalno: u `.env.local` dodaj `SUPABASE_SERVICE_ROLE_KEY=…` pa `npm run ingest`.
-- CI: GitHub Secrets `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Settings → Secrets → Actions).
-  Service-role ključ: Supabase → Project Settings → API → `service_role` (TAJNO; nikad u git/preglednik).
+### Pokretanje i egress (gdje se vrti)
+- Svaki adapter ima `egress`: **`global`** (dostupno s GitHub IP-a) ili **`hr`** (treba HR/EU IP).
+  `run.ts` filtrira po env `INGEST_EGRESS` (nije postavljen → svi izvori).
+- **GitHub Actions** (`.github/workflows/ingest.yml`, cron 6 h) postavlja `INGEST_EGRESS=global` → vrti SEDIA i druge globalne.
+- **HR izvori** (`egress: "hr"`) se NE mogu vrtjeti s GitHuba (geo-IP) → planiran **Vercel Cron u regiji fra1 (Frankfurt)**
+  s `INGEST_EGRESS=hr`. (Status: za izgraditi — Next API ruta `/api/ingest` + `vercel.json` cron + Vercel env
+  `SUPABASE_SERVICE_ROLE_KEY` i `CRON_SECRET`. Rizik: ako i fra1 EU IP bude blokiran, fallback je scheduled task
+  na HR računalu, gdje lokalno pokretanje već radi.)
+- Lokalno: u `.env.local` dodaj `SUPABASE_SERVICE_ROLE_KEY=…` pa `npm run ingest` (ili `INGEST_EGRESS=global npm run ingest`).
+- Ključ = Supabase → Settings → API Keys → **Secret keys** → `sb_secret_...` (novi naziv za service_role; TAJNO).
 
 ### Feasibility izvora (recon 2026-11-08) — redoslijed implementacije
-1. **ruralnirazvoj.hr** ✅ GOTOVO — statični HTML, čist (naslov/status/datum/rok). Nacionalni, ruralni (općine/LAG).
-2. **EU F&T (SEDIA)** — jedini pravi JSON API: `POST https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***`
-   s form-partom `query` (Elasticsearch bool). ⚠️ NE slati `languages` part (ruši u 500); dedupe po `callIdentifier`.
-   `type` 1=grants, status 31094501=Forthcoming/502=Open/503=Closed. `metadata.links[].startDate/endDate` = epoch-ms (objava/rok). EU-opseg.
+1. **ruralnirazvoj.hr** ✅ ADAPTER GOTOVO (`egress: hr`) — statični HTML, čist (naslov/status/datum/rok). Nacionalni, ruralni (općine/LAG).
+   Automatika čeka Vercel fra1 (geo-IP).
+2. **EU F&T (SEDIA)** ✅ ADAPTER GOTOVO (`egress: global`, GitHub automatika radi) — jedini pravi JSON API:
+   `POST https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=<upit>` s form-partom `query` (Elasticsearch bool).
+   ⚠️ NE slati `languages` part (ruši u 500); **`connection: close`** zaglavlje (undici keep-alive assert); dedupe po `callIdentifier`.
+   `type` 1=grants, status 31094501=Forthcoming/502=Open/503=Closed. `metadata.links[].startDate/endDate` = epoch-ms (objava/rok).
+   `frameworkProgramme` je samo ŠIFRA (ne ime). Filtrirano na JLS-relevantno preko `text` (lokalne vlasti/gradovi) → ~14 poziva. EU-opseg.
 3. **APPRRR (apprrr.hr)** — WP+Elementor HTML (REST ne daje pozive), Open/Closed filter + datumi.
 4. **FZOEU** — bogat statični HTML, ALI točan URL ima ID: `/hr/nacionalni-javni-pozivi-i-natjecaji/1367`;
    **rok često samo u PDF-u** (treba detalj). Najviše JLS-relevantnih poziva (energetska obnova, komunalno).
