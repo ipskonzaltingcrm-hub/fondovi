@@ -4,8 +4,35 @@ import type {
   CallStatus,
   FundingCall,
   Jls,
+  KlijentTip,
 } from "./types";
 import { daysUntil } from "./utils";
+
+export const klijentTipLabel: Record<KlijentTip, string> = {
+  jls: "JLS",
+  poduzece: "Poduzeće",
+  institucija: "Institucija",
+};
+
+/** Tipovi prijavitelja (ApplicantType) koji odgovaraju klijentu. */
+export function applicantTypesForClient(jls: Jls): ApplicantType[] {
+  if (jls.tipKlijenta === "poduzece") return ["tvrtka"];
+  if (jls.tipKlijenta === "institucija") return ["ustanova"];
+  return jls.tip ? [jls.tip] : ["grad", "opcina", "zupanija"];
+}
+
+/** Čitljiva oznaka klijenta za "X je prihvatljiv prijavitelj". */
+function klijentLabel(jls: Jls): string {
+  if (jls.tipKlijenta === "poduzece") return "Poduzeće";
+  if (jls.tipKlijenta === "institucija") return "Institucija";
+  return jls.tip === "grad"
+    ? "Grad"
+    : jls.tip === "opcina"
+      ? "Općina"
+      : jls.tip === "zupanija"
+        ? "Županija"
+        : "JLS";
+}
 
 export const levelLabel: Record<CallLevel, string> = {
   lokalna: "Lokalna",
@@ -61,12 +88,13 @@ export function matchCall(call: FundingCall, jls: Jls): MatchResult {
   const reasons: string[] = [];
   let score = 0;
 
-  const eligible = call.prihvatljivi.includes(jls.tip);
+  const clientTypes = applicantTypesForClient(jls);
+  const eligible = clientTypes.some((t) => call.prihvatljivi.includes(t));
   if (eligible) {
     score += 45;
-    reasons.push(`${jls.tip === "grad" ? "Grad" : jls.tip === "opcina" ? "Općina" : "Županija"} je prihvatljiv prijavitelj`);
+    reasons.push(`${klijentLabel(jls)} je prihvatljiv prijavitelj`);
   } else {
-    reasons.push("Ovaj tip JLS-a nije na popisu prihvatljivih prijavitelja");
+    reasons.push("Ova vrsta klijenta nije na popisu prihvatljivih prijavitelja");
   }
 
   const overlap = call.sektori.filter((s) => jls.sektoriInteresa.includes(s));

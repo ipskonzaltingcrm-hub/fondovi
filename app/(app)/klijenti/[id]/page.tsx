@@ -20,7 +20,13 @@ import { matchesForJls } from "@/lib/domain";
 import { getCalls, getJlsBySlug } from "@/lib/data";
 import { formatRange } from "@/lib/utils";
 
-const tipLabel = { grad: "Grad", opcina: "Općina", zupanija: "Županija" } as const;
+const tipLabel: Record<string, string> = {
+  grad: "Grad",
+  opcina: "Općina",
+  zupanija: "Županija",
+  poduzece: "Poduzeće",
+  institucija: "Institucija",
+};
 
 export default async function JlsProfilePage({
   params,
@@ -45,7 +51,7 @@ export default async function JlsProfilePage({
       </Link>
 
       <div className="mb-6 flex items-center gap-2">
-        <Badge tone="brand">{tipLabel[jls.tip]}</Badge>
+        <Badge tone="brand">{tipLabel[jls.tip ?? jls.tipKlijenta]}</Badge>
         <Badge
           tone={
             jls.status === "aktivan"
@@ -63,18 +69,37 @@ export default async function JlsProfilePage({
 
       {/* Atributi profila */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Attr icon={MapPin} label="Županija" value={jls.zupanija} />
-        <Attr
-          icon={Users}
-          label="Stanovnika"
-          value={jls.stanovnika.toLocaleString("hr-HR")}
-        />
-        <Attr
-          icon={Sprout}
-          label="Tip područja"
-          value={jls.ruralno ? "Ruralno" : "Urbano"}
-        />
-        <Attr icon={Mail} label="Kontakt" value={jls.kontaktOsoba} />
+        {jls.tipKlijenta === "jls" ? (
+          <>
+            <Attr icon={MapPin} label="Županija" value={jls.zupanija} />
+            <Attr
+              icon={Users}
+              label="Stanovnika"
+              value={jls.stanovnika ? jls.stanovnika.toLocaleString("hr-HR") : "—"}
+            />
+            <Attr
+              icon={Sprout}
+              label="Tip područja"
+              value={jls.ruralno ? "Ruralno" : "Urbano"}
+            />
+            <Attr icon={Mail} label="Kontakt" value={jls.kontaktOsoba} />
+          </>
+        ) : (
+          <>
+            <Attr
+              icon={Users}
+              label="Vrsta klijenta"
+              value={jls.tipKlijenta === "poduzece" ? "Poduzeće" : "Institucija"}
+            />
+            <Attr icon={MapPin} label="Sjedište" value={jls.zupanija || "—"} />
+            <Attr
+              icon={Sprout}
+              label={jls.tipKlijenta === "poduzece" ? "Veličina" : "Područje"}
+              value={jls.velicina || "—"}
+            />
+            <Attr icon={Mail} label="Kontakt" value={jls.kontaktOsoba} />
+          </>
+        )}
       </div>
 
       {jls.lag && (

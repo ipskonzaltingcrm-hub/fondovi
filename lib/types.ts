@@ -34,14 +34,25 @@ export interface FundingCall {
 
 export type JlsType = "grad" | "opcina" | "zupanija";
 
+/** Vrsta klijenta/pretplatnika. */
+export type KlijentTip = "jls" | "poduzece" | "institucija";
+
+/**
+ * Profil klijenta (povijesno "Jls"). Pokriva tri vrste pretplatnika:
+ * JLS (grad/općina/županija), poduzeća i znanstveno-istraživačke institucije.
+ */
 export interface Jls {
   id: string;
   naziv: string;
-  tip: JlsType;
+  tipKlijenta: KlijentTip;
+  /** JLS-podtip (grad/općina/županija); null za poduzeća/institucije. */
+  tip: JlsType | null;
   zupanija: string;
   stanovnika: number;
   ruralno: boolean;
   lag: string | null;
+  /** Veličina poduzeća (mikro/malo/srednje/veliko); null inače. */
+  velicina: string | null;
   sektoriInteresa: string[];
   kontaktOsoba: string;
   status: "aktivan" | "trial" | "pauziran";

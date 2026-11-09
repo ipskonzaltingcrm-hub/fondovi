@@ -39,15 +39,20 @@ type CallRow = {
 type JlsRow = {
   slug: string;
   naziv: string;
-  tip: JlsType;
+  klijent_tip: "jls" | "poduzece" | "institucija";
+  tip: JlsType | null;
   zupanija: string | null;
   stanovnika: number | null;
   ruralno: boolean;
   lag: string | null;
+  velicina: string | null;
   sektori_interesa: string[] | null;
   kontakt_osoba: string | null;
   status: "aktivan" | "trial" | "pauziran";
 };
+
+const JLS_COLS =
+  "slug,naziv,klijent_tip,tip,zupanija,stanovnika,ruralno,lag,velicina,sektori_interesa,kontakt_osoba,status";
 
 type SourceRow = {
   slug: string;
@@ -90,11 +95,13 @@ function mapJls(r: JlsRow): Jls {
   return {
     id: r.slug,
     naziv: r.naziv,
+    tipKlijenta: r.klijent_tip,
     tip: r.tip,
     zupanija: r.zupanija ?? "",
     stanovnika: r.stanovnika ?? 0,
     ruralno: r.ruralno,
     lag: r.lag,
+    velicina: r.velicina,
     sektoriInteresa: r.sektori_interesa ?? [],
     kontaktOsoba: r.kontakt_osoba ?? "",
     status: r.status,
@@ -142,9 +149,7 @@ export async function getJlsProfiles(): Promise<Jls[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("jls_profiles")
-    .select(
-      "slug,naziv,tip,zupanija,stanovnika,ruralno,lag,sektori_interesa,kontakt_osoba,status",
-    )
+    .select(JLS_COLS)
     .order("naziv", { ascending: true });
   if (error) throw new Error(`getJlsProfiles: ${error.message}`);
   return (data as JlsRow[]).map(mapJls);
@@ -155,9 +160,7 @@ export async function getJlsBySlug(slug: string): Promise<Jls | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("jls_profiles")
-    .select(
-      "slug,naziv,tip,zupanija,stanovnika,ruralno,lag,sektori_interesa,kontakt_osoba,status",
-    )
+    .select(JLS_COLS)
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw new Error(`getJlsBySlug: ${error.message}`);
