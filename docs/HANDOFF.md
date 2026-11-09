@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-09** (SEDIA adapter + GitHub automatika radi; geo-IP nalaz; Vercel za HR izvore).
+> Zadnje ažurirano: **2026-11-09** (ingestion KOMPLETAN: GitHub=SEDIA, Vercel=HR izvori — oboje dokazano radi).
 
 ---
 
@@ -76,11 +76,11 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - **Ingestion:** ✅ framework + raspored. **Tri adaptera**, baza očišćena od demo seeda → **98 pravih poziva**
   (ruralnirazvoj 55, FZOEU 29, SEDIA 14). Demo JLS "klijenti" (jls_profiles) namjerno ostavljeni (prikazuju matching).
   - **SEDIA (EU F&T)** — ✅ `global`, **GitHub Actions automatika radi** (6 h), 14 JLS-relevantnih EU poziva.
-  - **ruralnirazvoj.hr** (55) i **FZOEU** (29) — ✅ `hr`, automatika preko **Vercel Cron fra1** (ruta `/api/ingest` izgrađena).
-  - ⏳ **PREOSTAJE:** korisnik doda Vercel env `SUPABASE_SERVICE_ROLE_KEY` + `CRON_SECRET`, pa redeploy i test crona.
-  - **GEO-IP:** HR portali blokiraju strane/datacentar IP-eve (GitHub=Azure) → razdvojeno po `egress`
-    (`global`→GitHub, `hr`→Vercel fra1). Pozor: pretjerano testiranje ruralnirazvoj.hr danas je **okinulo privremenu
-    blokadu mog HR IP-a** (connect timeout) — u produkciji (1×/6h) se to ne događa; Vercel ima drugi IP.
+  - **ruralnirazvoj.hr** (55) i **FZOEU** (29) — ✅ `hr`, **Vercel Cron radi** (ruta `/api/ingest`, svakih 6h). Vercel env
+    `SUPABASE_SERVICE_ROLE_KEY` + `CRON_SECRET` postavljeni; ručni test uspješan (fetched 55+29, 0 grešaka).
+  - **GEO-IP (ispravka):** blokada NIJE čisto geografska — HR portali blokiraju **GitHub/Azure IP-eve**, ali **Vercelovi
+    IP-evi prolaze** (test se izvršio u iad1/US i uspio). Zato: SEDIA→GitHub, HR izvori→Vercel. `egress` razdvajanje stoji.
+    (Pozor: pretjerano lokalno testiranje ruralnirazvoj.hr može okinuti privremenu blokadu tvog HR IP-a; u produkciji 1×/6h — nije problem.)
 - Custom SMTP (slanje s `@ips-konzalting.hr` → bolja dostava, bez malog limita ugrađenog maila).
 - Spajanje custom domene `fondovi.ips-konzalting.hr` + isključivanje Vercel zaštite.
 
@@ -248,11 +248,11 @@ Filtar "JLS prihvatljiv prijavitelj" — ključne riječi: JLS, JLP(R)S, grad, o
   `run.ts` filtrira po env `INGEST_EGRESS` (nije postavljen → svi izvori).
 - **GitHub Actions** (`.github/workflows/ingest.yml`, cron 6 h) postavlja `INGEST_EGRESS=global` → vrti SEDIA i druge globalne.
 - **HR izvori** (`egress: "hr"`) se NE mogu vrtjeti s GitHuba (geo-IP) → **Vercel Cron u regiji fra1 (Frankfurt)**.
-  ✅ IZGRAĐENO: Next API ruta `app/api/ingest/route.ts` (`runtime nodejs`, `preferredRegion 'fra1'`, egress='hr',
-  zaštita `CRON_SECRET`) + `vercel.json` cron (`/api/ingest`, `30 */6 * * *`) + proxy pušta `/api`.
-  ⏳ Preostaje: Vercel env `SUPABASE_SERVICE_ROLE_KEY` (= `sb_secret_...`) i `CRON_SECRET`, redeploy, pa test
-  (Vercel → Cron Jobs → Run, ili čekaj raspored). **Rizik:** ako i fra1 EU IP bude blokiran geo-filtrom, fallback je
-  scheduled task na HR računalu (lokalno pokretanje `npm run ingest` već radi).
+  ✅ RADI: Next API ruta `app/api/ingest/route.ts` (`runtime nodejs`, egress='hr', zaštita `CRON_SECRET`;
+  prihvaća i `?key=<CRON_SECRET>` za ručni/test poziv) + `vercel.json` cron (`/api/ingest`, `30 */6 * * *`) + proxy pušta `/api`.
+  Vercel env postavljeni. Ručni test (preko `?key`) uspješan: fetched 55+29, 0 grešaka, izvori označeni `aktivan`.
+  NAPOMENA: `preferredRegion 'fra1'` se nije primijenio (izvršilo se u iad1) — nebitno jer Vercelov IP prolazi.
+  Ručno pokretanje: Vercel → Crons → Run, ili GET `/api/ingest?key=<CRON_SECRET>`.
 - Lokalno: u `.env.local` dodaj `SUPABASE_SERVICE_ROLE_KEY=…` pa `npm run ingest` (ili `INGEST_EGRESS=global npm run ingest`).
 - Ključ = Supabase → Settings → API Keys → **Secret keys** → `sb_secret_...` (novi naziv za service_role; TAJNO).
 
