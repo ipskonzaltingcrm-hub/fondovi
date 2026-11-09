@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "ingest": "tsx scripts/ingest/run.ts",
+    "ingest": "tsx scripts/ingest/cli.ts",
     "typecheck:ingest": "tsc -p scripts/ingest/tsconfig.json"
   },
   "dependencies": {

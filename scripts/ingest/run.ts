@@ -7,15 +7,6 @@ import { adapters } from "./sources";
 import { toCallRow } from "./util";
 import type { CallRow, SourceAdapter } from "./types";
 
-// Lokalno: učitaj .env.local (u CI-u varijable dolaze iz GitHub Secreta).
-try {
-  (process as unknown as { loadEnvFile?: (p?: string) => void }).loadEnvFile?.(
-    ".env.local",
-  );
-} catch {
-  /* nema .env.local (npr. CI) — koristi postojeće env varijable */
-}
-
 // Polja čije promjene bilježimo u call_changes (za "što se promijenilo").
 const TRACKED: (keyof CallRow)[] = ["status", "rok_prijave", "iznos_max", "naslov"];
 
@@ -134,19 +125,35 @@ async function runAdapter(
   return { slug: adapter.slug, fetched: rows.length, inserted, updated };
 }
 
-async function main() {
-  const supabase = createServiceClient();
+export type IngestResult = {
+  slug: string;
+  fetched?: number;
+  inserted?: number;
+  updated?: number;
+  error?: string;
+};
+export type IngestSummary = {
+  total: number;
+  failures: number;
+  results: IngestResult[];
+};
 
-  // Odabir izvora po egress-u: GitHub → "global", Vercel(fra1) → "hr".
-  // Netagirani izvor se vrti svugdje. Bez env varijable: svi.
-  const egress = process.env.INGEST_EGRESS;
+/**
+ * Pokreće ingestion. Bez nuspojava pri importu (nema process.exit) — zovu ga i
+ * CLI (cli.ts) i Vercel API ruta (/api/ingest).
+ * @param opts.egress "global" | "hr" — filtrira izvore; bez njega koristi INGEST_EGRESS ili sve.
+ */
+export async function runIngest(opts?: { egress?: string }): Promise<IngestSummary> {
+  const supabase = createServiceClient();
+  const egress = opts?.egress ?? process.env.INGEST_EGRESS;
   const selected = egress
     ? adapters.filter((a) => !a.egress || a.egress === egress)
     : adapters;
 
+  const results: IngestResult[] = [];
   if (!selected.length) {
     console.log(`Nema izvora za egress='${egress ?? "(svi)"}'.`);
-    return;
+    return { total: 0, failures: 0, results };
   }
 
   console.log(
@@ -160,20 +167,17 @@ async function main() {
       console.log(
         `✓ ${r.slug.padEnd(24)} dohvaćeno ${r.fetched}, novih ${r.inserted}, promijenjenih ${r.updated}`,
       );
+      results.push(r);
     } catch (e) {
       failures++;
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`✗ ${adapter.slug.padEnd(24)} GREŠKA: ${msg}`);
       // Označi izvor kao 'greska' (best-effort)
       await supabase.from("sources").update({ status: "greska" }).eq("slug", adapter.slug);
+      results.push({ slug: adapter.slug, error: msg });
     }
   }
 
   console.log(`\nGotovo. Neuspjelih izvora: ${failures}/${selected.length}`);
-  if (failures === selected.length) process.exit(1); // svi pali → fail CI
+  return { total: selected.length, failures, results };
 }
-
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});

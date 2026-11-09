@@ -1,8 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/** Javne rute — ne zahtijevaju prijavu. */
-const PUBLIC_PREFIXES = ["/login", "/auth"];
+/** Javne rute — ne zahtijevaju prijavu. (/api ima vlastitu zaštitu, npr. CRON_SECRET.) */
+const PUBLIC_PREFIXES = ["/login", "/auth", "/api"];
 
 /**
  * Osvježava Supabase sesiju (kolačiće) na svakom zahtjevu i štiti rute.
