@@ -73,13 +73,14 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - Seed podaci (demo): 14 natječaja, 5 JLS profila, 7 izvora, 1 tenant (ips).
 
 ### ⏳ Faza 2 — Pravi podaci + produkcijski email + domena (U TIJEKU, vidi §9 i §12)
-- **Ingestion:** ✅ framework + raspored. Dva adaptera rade i pune bazu stvarnim podacima:
-  - **SEDIA (EU F&T)** — ✅ **GitHub Actions automatika radi** (svakih 6 h), 14 JLS-relevantnih EU poziva.
-  - **ruralnirazvoj.hr** — ✅ parsira 55 aktualnih poziva; napunjeno lokalno. Automatika preko **Vercela** (vidi niže).
-  - GitHub Secrets postavljeni (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` = Supabase **secret key** `sb_secret_...`).
-  - ⏳ **GEO-IP NALAZ:** hrvatski portali (ruralnirazvoj, vjerojatno i FZOEU/eufondovi) **blokiraju strane/datacentar IP-eve**
-    (GitHub = Azure) → "fetch failed". Zato je ingestion razdvojen po `egress`: **`global`** (SEDIA i sl. → GitHub) i
-    **`hr`** (HR portali → **Vercel Cron u fra1/Frankfurt**, EU IP). Vercel dio je SLJEDEĆI korak (vidi §12).
+- **Ingestion:** ✅ framework + raspored. **Tri adaptera**, baza očišćena od demo seeda → **98 pravih poziva**
+  (ruralnirazvoj 55, FZOEU 29, SEDIA 14). Demo JLS "klijenti" (jls_profiles) namjerno ostavljeni (prikazuju matching).
+  - **SEDIA (EU F&T)** — ✅ `global`, **GitHub Actions automatika radi** (6 h), 14 JLS-relevantnih EU poziva.
+  - **ruralnirazvoj.hr** (55) i **FZOEU** (29) — ✅ `hr`, automatika preko **Vercel Cron fra1** (ruta `/api/ingest` izgrađena).
+  - ⏳ **PREOSTAJE:** korisnik doda Vercel env `SUPABASE_SERVICE_ROLE_KEY` + `CRON_SECRET`, pa redeploy i test crona.
+  - **GEO-IP:** HR portali blokiraju strane/datacentar IP-eve (GitHub=Azure) → razdvojeno po `egress`
+    (`global`→GitHub, `hr`→Vercel fra1). Pozor: pretjerano testiranje ruralnirazvoj.hr danas je **okinulo privremenu
+    blokadu mog HR IP-a** (connect timeout) — u produkciji (1×/6h) se to ne događa; Vercel ima drugi IP.
 - Custom SMTP (slanje s `@ips-konzalting.hr` → bolja dostava, bez malog limita ugrađenog maila).
 - Spajanje custom domene `fondovi.ips-konzalting.hr` + isključivanje Vercel zaštite.
 
@@ -246,10 +247,12 @@ Filtar "JLS prihvatljiv prijavitelj" — ključne riječi: JLS, JLP(R)S, grad, o
 - Svaki adapter ima `egress`: **`global`** (dostupno s GitHub IP-a) ili **`hr`** (treba HR/EU IP).
   `run.ts` filtrira po env `INGEST_EGRESS` (nije postavljen → svi izvori).
 - **GitHub Actions** (`.github/workflows/ingest.yml`, cron 6 h) postavlja `INGEST_EGRESS=global` → vrti SEDIA i druge globalne.
-- **HR izvori** (`egress: "hr"`) se NE mogu vrtjeti s GitHuba (geo-IP) → planiran **Vercel Cron u regiji fra1 (Frankfurt)**
-  s `INGEST_EGRESS=hr`. (Status: za izgraditi — Next API ruta `/api/ingest` + `vercel.json` cron + Vercel env
-  `SUPABASE_SERVICE_ROLE_KEY` i `CRON_SECRET`. Rizik: ako i fra1 EU IP bude blokiran, fallback je scheduled task
-  na HR računalu, gdje lokalno pokretanje već radi.)
+- **HR izvori** (`egress: "hr"`) se NE mogu vrtjeti s GitHuba (geo-IP) → **Vercel Cron u regiji fra1 (Frankfurt)**.
+  ✅ IZGRAĐENO: Next API ruta `app/api/ingest/route.ts` (`runtime nodejs`, `preferredRegion 'fra1'`, egress='hr',
+  zaštita `CRON_SECRET`) + `vercel.json` cron (`/api/ingest`, `30 */6 * * *`) + proxy pušta `/api`.
+  ⏳ Preostaje: Vercel env `SUPABASE_SERVICE_ROLE_KEY` (= `sb_secret_...`) i `CRON_SECRET`, redeploy, pa test
+  (Vercel → Cron Jobs → Run, ili čekaj raspored). **Rizik:** ako i fra1 EU IP bude blokiran geo-filtrom, fallback je
+  scheduled task na HR računalu (lokalno pokretanje `npm run ingest` već radi).
 - Lokalno: u `.env.local` dodaj `SUPABASE_SERVICE_ROLE_KEY=…` pa `npm run ingest` (ili `INGEST_EGRESS=global npm run ingest`).
 - Ključ = Supabase → Settings → API Keys → **Secret keys** → `sb_secret_...` (novi naziv za service_role; TAJNO).
 
@@ -262,8 +265,9 @@ Filtar "JLS prihvatljiv prijavitelj" — ključne riječi: JLS, JLP(R)S, grad, o
    `type` 1=grants, status 31094501=Forthcoming/502=Open/503=Closed. `metadata.links[].startDate/endDate` = epoch-ms (objava/rok).
    `frameworkProgramme` je samo ŠIFRA (ne ime). Filtrirano na JLS-relevantno preko `text` (lokalne vlasti/gradovi) → ~14 poziva. EU-opseg.
 3. **APPRRR (apprrr.hr)** — WP+Elementor HTML (REST ne daje pozive), Open/Closed filter + datumi.
-4. **FZOEU** — bogat statični HTML, ALI točan URL ima ID: `/hr/nacionalni-javni-pozivi-i-natjecaji/1367`;
-   **rok često samo u PDF-u** (treba detalj). Najviše JLS-relevantnih poziva (energetska obnova, komunalno).
+4. **FZOEU** ✅ ADAPTER GOTOVO (`egress: hr`) — akordeon HTML na `/hr/nacionalni-javni-pozivi-i-natjecaji/1367`;
+   parsira naslov/status/datum objave + link (nid). **Rok NIJE u listi** (u PDF-u poziva) → `rok_prijave` ostaje prazan.
+   Najviše JLS-relevantnih poziva (energetska obnova, komunalno). 29 poziva.
 5. **ESF+ (esf.hr)** — HTML lista OK, ali sadržaj zastario/preklapa se s eufondovi. Nizak prioritet.
 6. **eufondovi.gov.hr** — WP REST lako dohvatljiv, ali pozivi zakopani kao vijesti (bez call-typea,
    rok/ref u tekstu) → keyword-filter + regex. Najmjerodavniji nacionalni, ali najteži za čist unos.
