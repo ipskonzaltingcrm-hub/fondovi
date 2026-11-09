@@ -84,7 +84,6 @@ export const ruralnirazvoj: SourceAdapter = {
     level: "nacionalna",
     davatelj: "APPRRR / Ministarstvo poljoprivrede",
     program: "Strateški plan ZPP 2023.–2027.",
-    sektori: ["Poljoprivreda i ruralni razvoj"],
   },
   fetchCalls,
 };

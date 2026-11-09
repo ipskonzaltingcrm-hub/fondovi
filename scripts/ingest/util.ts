@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CallRow, CallStatus, RawCall, SourceAdapter } from "./types";
+import { classifyApplicants, classifySektori } from "./classify";
 
 /** Hrvatski-friendly slugify: č/ć→c, ž→z, đ→d, š→s, ostalo u a-z0-9 + crtice. */
 export function slugify(input: string): string {
@@ -85,6 +86,17 @@ export function toCallRow(adapter: SourceAdapter, raw: RawCall): Omit<CallRow, "
   // uočeno samo u esf arhivi). Shemu ne mijenjamo da ne razbijemo postojeće slugove.
   const slug = `${adapter.slug}-${slugify(merged.externalId || merged.naslov)}`;
 
+  // Klasifikacija: sektori + prihvatljivi iz teksta (+ izvora). Adapter-zadane
+  // vrijednosti imaju prednost; inače se izvode heuristički.
+  const klasText = `${merged.naslov} ${merged.sazetak ?? ""} ${merged.program ?? ""}`;
+  const sektori = [
+    ...new Set([...(merged.sektori ?? []), ...classifySektori(klasText)]),
+  ];
+  const prihvatljivi =
+    merged.prihvatljivi && merged.prihvatljivi.length
+      ? merged.prihvatljivi
+      : classifyApplicants(klasText, adapter.slug);
+
   const base: Omit<CallRow, "source_id" | "content_hash"> = {
     slug,
     naslov: merged.naslov.trim(),
@@ -98,8 +110,8 @@ export function toCallRow(adapter: SourceAdapter, raw: RawCall): Omit<CallRow, "
     iznos_max: merged.iznosMax ?? null,
     ukupna_alokacija: merged.ukupnaAlokacija ?? null,
     intenzitet: merged.intenzitet ?? null,
-    prihvatljivi: merged.prihvatljivi ?? [],
-    sektori: merged.sektori ?? [],
+    prihvatljivi,
+    sektori,
     sazetak: merged.sazetak ?? null,
     izvor: adapter.naziv,
     url: merged.url,
