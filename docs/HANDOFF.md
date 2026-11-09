@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-09** (Faza A: 7 izvora/162 poziva; Faza B: matching radi — pozivi klasificirani sektorima + prihvatljivima).
+> Zadnje ažurirano: **2026-11-09** (opseg proširen na 3 skupine klijenata; 9 izvora/201 poziv; matching radi).
 
 ---
 
@@ -23,8 +23,10 @@ Nije namijenjeno prodaji konkurentskim konzultantima. IPS = operator/superadmin;
 - Jezik sučelja i komunikacije: **hrvatski**
 - Planirana domena: **fondovi.ips-konzalting.hr** (još nije spojena na Vercel)
 
-> Napomena o opsegu: jedan dizajnerski predložak spominjao je širu publiku (SME + JLS + istraživačke institucije).
-> Trenutna odluka: **ostajemo fokusirani na JLS**. Širenje publike je otvoreno pitanje za kasnije (vidi §9).
+> **Opseg (ažurirano 2026-11-09): TRI vrste pretplatnika/klijenata** — (1) JLS (gradovi/općine/županije),
+> (2) **poduzeća** (SME + velika), (3) **znanstveno-istraživačke institucije** (fakulteti/instituti).
+> Ingestion i matching pokrivaju sve tri skupine (`prihvatljivi` uključuje `tvrtka` i `ustanova`).
+> Faza C (klijenti) → profil klijenta ima **tip** (JLS / poduzeće / institucija).
 
 ---
 
@@ -73,12 +75,13 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - Seed podaci (demo): 14 natječaja, 5 JLS profila, 7 izvora, 1 tenant (ips).
 
 ### ⏳ Faza 2 — Pravi podaci + produkcijski email + domena (U TIJEKU, vidi §9 i §12)
-- **Ingestion (Faza A GOTOVA):** ✅ framework + raspored + **7 adaptera** → **162 prava poziva** u bazi
-  (ruralnirazvoj 55, euribarstvo 42, FZOEU 29, SEDIA 14, eufondovi 12, esf 10, interreg-si-hr 0*). Demo seed očišćen.
-  Demo JLS "klijenti" (jls_profiles) namjerno ostavljeni (prikazuju matching).
-  - **SEDIA (EU F&T)** — `global`, **GitHub Actions**, dnevno ~07h.
-  - **ruralnirazvoj, FZOEU, eufondovi, esf, euribarstvo, interreg-si-hr** — `hr`, **Vercel Cron** (`/api/ingest`), dnevno ~07h.
-    Ručni test (?key) uspješan sa svih 6, 0 grešaka. (*interreg: si-hr.eu trenutno u maintenanceu → 0; adapter hvata 2 poziva kad proradi.)
+- **Ingestion (GOTOVO, prošireno na 3 skupine):** ✅ framework + raspored + **9 adaptera** → **201 poziv** u bazi.
+  Pokrivenost: JLS ~66, poduzeća ~180, institucije ~37. Demo seed očišćen (jls_profiles ostavljeni za demo matchinga).
+  - Po izvoru: ruralnirazvoj 55, euribarstvo 42, FZOEU 29, SEDIA 28, HAMAG-BICRO 22, eufondovi 12, esf 10, HRZZ 3, interreg-si-hr 0*.
+  - **SEDIA (EU F&T)** — `global`, **GitHub Actions**, dnevno ~07h. Filtar: lokalne vlasti + SME + istraživanje (~300 → dedup ~40).
+  - **8 HR izvora** — `hr`, **Vercel Cron** (`/api/ingest`), dnevno ~07h. Ručni test (?key) uspješan.
+    (*interreg: si-hr.eu u maintenanceu → 0; hvata 2 poziva kad proradi.)
+  - Novi izvori za proširene skupine: **HAMAG-BICRO** (SME/inovacije), **HRZZ** (znanstveni projekti).
   - Vercel env `SUPABASE_SERVICE_ROLE_KEY` + `CRON_SECRET` postavljeni.
   - **GEO-IP (ispravka):** blokada NIJE čisto geografska — HR portali blokiraju **GitHub/Azure IP-eve**, ali **Vercelovi
     IP-evi prolaze** (test se izvršio u iad1/US i uspio). Zato: SEDIA→GitHub, HR izvori→Vercel. `egress` razdvajanje stoji.
