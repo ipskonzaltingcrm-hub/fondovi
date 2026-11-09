@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-09** (Faza A gotova: 7 izvora, 162 poziva; GitHub=SEDIA, Vercel=6 HR izvora, dnevno ~07h).
+> Zadnje ažurirano: **2026-11-09** (Faza A: 7 izvora/162 poziva; Faza B: matching radi — pozivi klasificirani sektorima + prihvatljivima).
 
 ---
 
@@ -86,7 +86,18 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - Custom SMTP (slanje s `@ips-konzalting.hr` → bolja dostava, bez malog limita ugrađenog maila).
 - Spajanje custom domene `fondovi.ips-konzalting.hr` + isključivanje Vercel zaštite.
 
-### 🔜 Faza 3 — Pravi pretplatnici (kasnije)
+### ✅ Faza B — Matching po JLS (GOTOVO)
+- `scripts/ingest/classify.ts` iz teksta (naslov+sažetak+program) + izvora izvodi **`sektori`**
+  (rječnik JLS profila, HR+EN) i **`prihvatljivi`** (grad/opcina/zupanija/lag/ustanova/tvrtka/ngo).
+  Ruralni/ribarstvo → JLS samo za infrastrukturu, inače gospodarstvo; javni-sektor izvori → JLS.
+- Ugrađeno u `toCallRow`; svi pozivi u bazi obogaćeni. Matching (`lib/domain.ts matchesForJls`) sad radi:
+  po demo JLS-u 63–66 prihvatljivih poziva, 5–14 otvorenih s preklapanjem sektora.
+- Heuristika (prihvatljivost iz naslova je približna — za točno vrijedi tekst poziva); profinjivanje po potrebi kasnije.
+
+### 🔜 Faza C — Upravljanje klijentima (SLJEDEĆE)
+- Kroz aplikaciju dodavati prave JLS tenante + profile (umjesto demo seeda); temelj za onboarding i pretplatu.
+
+### 🔜 Faza 3+ — Pravi pretplatnici (kasnije)
 - Pozivnice/članstvo za JLS korisnike, admin po tenantu, upravljanje JLS profilima iz UI-a.
 - Naplata/pretplata (Stripe ili ručno fakturiranje + ručna aktivacija).
 - Finiji matching, obavijesti (email digest) o novim pozivima i rokovima.
