@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-09** (ingestion KOMPLETAN: GitHub=SEDIA, Vercel=HR izvori — oboje dokazano radi).
+> Zadnje ažurirano: **2026-11-09** (Faza A gotova: 7 izvora, 162 poziva; GitHub=SEDIA, Vercel=6 HR izvora, dnevno ~07h).
 
 ---
 
@@ -73,11 +73,13 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - Seed podaci (demo): 14 natječaja, 5 JLS profila, 7 izvora, 1 tenant (ips).
 
 ### ⏳ Faza 2 — Pravi podaci + produkcijski email + domena (U TIJEKU, vidi §9 i §12)
-- **Ingestion:** ✅ framework + raspored. **Tri adaptera**, baza očišćena od demo seeda → **98 pravih poziva**
-  (ruralnirazvoj 55, FZOEU 29, SEDIA 14). Demo JLS "klijenti" (jls_profiles) namjerno ostavljeni (prikazuju matching).
-  - **SEDIA (EU F&T)** — ✅ `global`, **GitHub Actions automatika radi** (jednom dnevno ~07h), 14 JLS-relevantnih EU poziva.
-  - **ruralnirazvoj.hr** (55) i **FZOEU** (29) — ✅ `hr`, **Vercel Cron radi** (ruta `/api/ingest`, dnevno ~07h). Vercel env
-    `SUPABASE_SERVICE_ROLE_KEY` + `CRON_SECRET` postavljeni; ručni test uspješan (fetched 55+29, 0 grešaka).
+- **Ingestion (Faza A GOTOVA):** ✅ framework + raspored + **7 adaptera** → **162 prava poziva** u bazi
+  (ruralnirazvoj 55, euribarstvo 42, FZOEU 29, SEDIA 14, eufondovi 12, esf 10, interreg-si-hr 0*). Demo seed očišćen.
+  Demo JLS "klijenti" (jls_profiles) namjerno ostavljeni (prikazuju matching).
+  - **SEDIA (EU F&T)** — `global`, **GitHub Actions**, dnevno ~07h.
+  - **ruralnirazvoj, FZOEU, eufondovi, esf, euribarstvo, interreg-si-hr** — `hr`, **Vercel Cron** (`/api/ingest`), dnevno ~07h.
+    Ručni test (?key) uspješan sa svih 6, 0 grešaka. (*interreg: si-hr.eu trenutno u maintenanceu → 0; adapter hvata 2 poziva kad proradi.)
+  - Vercel env `SUPABASE_SERVICE_ROLE_KEY` + `CRON_SECRET` postavljeni.
   - **GEO-IP (ispravka):** blokada NIJE čisto geografska — HR portali blokiraju **GitHub/Azure IP-eve**, ali **Vercelovi
     IP-evi prolaze** (test se izvršio u iad1/US i uspio). Zato: SEDIA→GitHub, HR izvori→Vercel. `egress` razdvajanje stoji.
     (Pozor: pretjerano lokalno testiranje ruralnirazvoj.hr može okinuti privremenu blokadu tvog HR IP-a; u produkciji 1×/6h — nije problem.)
