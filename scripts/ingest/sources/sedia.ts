@@ -7,10 +7,13 @@ import type { CallStatus, RawCall, SourceAdapter } from "../types";
 /* ------------------------------------------------------------------ */
 
 const API = "https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA";
-// Suzi na pozive relevantne za jedinice lokalne/regionalne samouprave.
-const TEXT = '"local authorities" OR municipalities OR cities OR "local government"';
+// Suzi na pozive relevantne za naše 3 skupine: JLS, poduzeća (SME/velika),
+// znanstveno-istraživačke institucije. (Široko "research OR innovation" bi
+// vratilo ~8500 poziva — ovo je ciljano, ~300 → nakon dedupa po jeziku ~40.)
+const TEXT =
+  '"local authorities" OR municipalities OR cities OR SMEs OR "small and medium-sized enterprises" OR startups OR universities OR "research organisations" OR "research infrastructure"';
 const PAGE_SIZE = 100;
-const MAX_PAGES = 4;
+const MAX_PAGES = 5;
 
 // status šifre → naš enum
 const STATUS: Record<string, CallStatus> = {

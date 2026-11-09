@@ -33,63 +33,64 @@ export function classifySektori(text: string): string[] {
   return [...out];
 }
 
-// Izvori čiji su pozivi pretežno za JLS (javni sektor).
-const JLS_SOURCES = new Set([
-  "fzoeu",
-  "eufondovi",
-  "esf",
-  "eu-funding-tenders",
-  "interreg-si-hr",
-]);
+// Zadani prihvatljivi po izvoru (fallback kad tekst ne kaže izravno tko smije).
+// Odražava tipičnu publiku izvora: JLS, poduzeća (tvrtka), institucije (ustanova), udruge.
+const SOURCE_DEFAULTS: Record<string, ApplicantType[]> = {
+  "eu-funding-tenders": ["grad", "opcina", "zupanija", "tvrtka", "ustanova"], // EU pozivi široko otvoreni
+  fzoeu: ["grad", "opcina", "zupanija", "tvrtka"],
+  eufondovi: ["grad", "opcina", "zupanija", "tvrtka", "ustanova"], // PKK=SME, ITP=JLS, istraživanje
+  esf: ["grad", "opcina", "zupanija", "ustanova", "ngo", "tvrtka"],
+  "interreg-si-hr": ["grad", "opcina", "zupanija", "ustanova", "ngo", "tvrtka"],
+  hamagbicro: ["tvrtka"], // agencija za malo gospodarstvo
+  hrzz: ["ustanova"], // znanstvene institucije
+  ruralnirazvoj: ["tvrtka"],
+  euribarstvo: ["tvrtka"],
+};
+const GENERIC_DEFAULT: ApplicantType[] = ["grad", "opcina", "zupanija"];
 
 export function classifyApplicants(text: string, sourceSlug: string): ApplicantType[] {
   const out = new Set<ApplicantType>();
   const t = text.toLowerCase();
 
-  // Eksplicitne naznake prijavitelja u tekstu
-  if (/jedinic\w*\s*lokaln|\bjls\b|lokaln\w*\s*(i\s*podru[čc]n\w*\s*)?samouprav|jlp\(?r?\)?s/.test(t)) {
+  // --- Eksplicitne naznake prijavitelja (HR + EN) ---
+  // JLS / lokalne vlasti
+  if (
+    /jedinic\w*\s*lokaln|\bjls\b|lokaln\w*\s*(i\s*podru[čc]n\w*\s*)?samouprav|jlp\(?r?\)?s|local\s*authorit|municipalit|\bcities\b|local\s*government/.test(t)
+  ) {
     out.add("grad");
     out.add("opcina");
     out.add("zupanija");
   }
   if (/op[ćc]in/.test(t)) out.add("opcina");
-  if (/[žz]upanij/.test(t)) out.add("zupanija");
-  if (/\bgradov|grad\w*\s*i\s*op[ćc]in|jedinic/.test(t)) out.add("grad");
+  if (/[žz]upanij|\bregions?\b/.test(t)) out.add("zupanija");
+  if (/\bgradov|grad\w*\s*i\s*op[ćc]in|\btown\b/.test(t)) out.add("grad");
   if (/\blag\b|leader/.test(t)) out.add("lag");
-  if (/javn\w*\s*ustanov|\bustanov|[šs]kol|vrti[ćc]|dom zdravlja|bolnic|fakultet|sveu[čc]ili[šs]/.test(t))
+  // Institucije / istraživanje
+  if (
+    /javn\w*\s*ustanov|\bustanov|[šs]kol|vrti[ćc]|dom zdravlja|bolnic|fakultet|sveu[čc]ili[šs]|institut|universit|research\s*(organi|infrastructur|institut|centre|center|perform)|academic|higher\s*education/.test(t)
+  )
     out.add("ustanova");
-  if (/poduzetni|tvrtk|\bobrt|\bmsp\b|mikro|srednj\w*\s*poduze|gospodarstven|poslovn\w*\s*subjekt|\bopg\b|poljoprivrednic/.test(t))
+  // Poduzeća (SME + velika)
+  if (
+    /poduzetni|tvrtk|\bobrt|\bmsp\b|mikro|srednj\w*\s*poduze|gospodarstven|poslovn\w*\s*subjekt|\bopg\b|poljoprivrednic|\bsme\b|small\s*and\s*medium|enterprise|\bbusiness|\bcompan|start-?up|entrepreneur|\bindustr/.test(t)
+  )
     out.add("tvrtka");
-  if (/udrug|nevladin|neprofitn|\bocd\b|organizacij\w*\s*civilnog/.test(t)) out.add("ngo");
+  // Udruge / civilno društvo
+  if (/udrug|nevladin|neprofitn|\bocd\b|organizacij\w*\s*civilnog|\bNGOs?\b|non-?profit|civil\s*society/i.test(text))
+    out.add("ngo");
 
-  const hasJls = out.has("grad") || out.has("opcina") || out.has("zupanija");
-
-  // Izvor-specifična logika kad tekst ne kaže izravno tko je prijavitelj
-  if (!hasJls) {
-    if (JLS_SOURCES.has(sourceSlug)) {
-      out.add("grad");
-      out.add("opcina");
-      out.add("zupanija");
-    } else if (sourceSlug === "ruralnirazvoj") {
-      // Ruralni razvoj: općine/LAG samo za infrastrukturu/ruralna područja,
-      // inače su prijavitelji gospodarstvo/poljoprivrednici (ne JLS).
-      if (/infrastruktur|ruraln\w*\s*podru[čc]j|komunaln|\bselo\b|op[ćc]in|\blag\b|javn\w*\s*(zgrad|objekt|povr)/.test(t)) {
-        out.add("opcina");
-        out.add("lag");
-      } else {
-        out.add("tvrtka");
-      }
-    } else if (sourceSlug === "euribarstvo") {
-      if (/lu[čc]k|infrastruktur|op[ćc]in|javn/.test(t)) out.add("opcina");
-      else out.add("tvrtka");
-    }
+  // Ruralni/ribarstvo: općine/LAG samo za infrastrukturu/ruralna područja
+  if (sourceSlug === "ruralnirazvoj" && /infrastruktur|ruraln\w*\s*podru[čc]j|komunaln|\bselo\b|op[ćc]in|\blag\b|javn\w*\s*(zgrad|objekt|povr)/.test(t)) {
+    out.add("opcina");
+    out.add("lag");
+  }
+  if (sourceSlug === "euribarstvo" && /lu[čc]k|infrastruktur|op[ćc]in|javn/.test(t)) {
+    out.add("opcina");
   }
 
-  // Nikad prazno — zadano JLS (da se barem pojavi u pregledu uz provjeru)
+  // Fallback kad ništa nije prepoznato → zadano po izvoru
   if (out.size === 0) {
-    out.add("grad");
-    out.add("opcina");
-    out.add("zupanija");
+    for (const a of SOURCE_DEFAULTS[sourceSlug] ?? GENERIC_DEFAULT) out.add(a);
   }
 
   return [...out];
