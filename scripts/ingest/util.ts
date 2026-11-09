@@ -75,7 +75,11 @@ export function toCallRow(adapter: SourceAdapter, raw: RawCall): Omit<CallRow, "
   const datum_objave = parseDate(merged.datumObjave);
   const rok_prijave = parseDate(merged.rokPrijave);
   const status = merged.status ?? statusFromDeadline(rok_prijave, datum_objave);
-  const slug = `${adapter.slug}-${slugify(merged.externalId || merged.naslov)}`;
+  // Slug = izvor + čitljivi dio + kratki hash ključa (hash sprječava koliziju
+  // kad dva različita poziva daju isti skraćeni čitljivi dio).
+  const rawKey = merged.externalId || merged.naslov;
+  const shortId = createHash("sha1").update(rawKey).digest("hex").slice(0, 6);
+  const slug = `${adapter.slug}-${slugify(rawKey).slice(0, 56)}-${shortId}`;
 
   const base: Omit<CallRow, "source_id" | "content_hash"> = {
     slug,
