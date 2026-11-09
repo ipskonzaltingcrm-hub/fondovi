@@ -6,6 +6,8 @@ import { eufondovi } from "./eufondovi";
 import { esf } from "./esf";
 import { euribarstvo } from "./euribarstvo";
 import { interregSiHr } from "./interreg-si-hr";
+import { hamagbicro } from "./hamagbicro";
+import { hrzz } from "./hrzz";
 
 /* ------------------------------------------------------------------ */
 /*  Registar izvora. Dodavanje novog izvora = nova datoteka adaptera   */
@@ -23,4 +25,6 @@ export const adapters: SourceAdapter[] = [
   esf,
   euribarstvo,
   interregSiHr,
+  hamagbicro, // SME (poduzeća)
+  hrzz, // znanstveno-istraživačke institucije
 ];
