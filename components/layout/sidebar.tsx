@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 const nav = [
   { href: "/dashboard", label: "Pregled", icon: LayoutDashboard },
   { href: "/pozivi", label: "Natječaji", icon: Megaphone },
-  { href: "/klijenti", label: "Klijenti (JLS)", icon: Building2 },
+  { href: "/klijenti", label: "Klijenti", icon: Building2 },
   { href: "/izvori", label: "Izvori", icon: Radio, admin: true },
 ];
 

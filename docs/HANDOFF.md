@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-09** (opseg proširen na 3 skupine klijenata; 9 izvora/201 poziv; matching radi).
+> Zadnje ažurirano: **2026-11-09** (Faze A–C gotove: 9 izvora/201 poziv, matching radi, klijenti s tipovima + unos).
 
 ---
 
@@ -97,8 +97,14 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
   po demo JLS-u 63–66 prihvatljivih poziva, 5–14 otvorenih s preklapanjem sektora.
 - Heuristika (prihvatljivost iz naslova je približna — za točno vrijedi tekst poziva); profinjivanje po potrebi kasnije.
 
-### 🔜 Faza C — Upravljanje klijentima (SLJEDEĆE)
-- Kroz aplikaciju dodavati prave JLS tenante + profile (umjesto demo seeda); temelj za onboarding i pretplatu.
+### ✅ Faza C — Upravljanje klijentima (GOTOVO)
+- Migracija 0004: `klijent_tip` enum (jls/poduzece/institucija) + `velicina`; `tip` (grad/opcina/zupanija) nullable.
+- Model (`Jls` → ima `tipKlijenta`), data layer i matching generalizirani: `applicantTypesForClient`
+  (poduzeće→tvrtka, institucija→ustanova, JLS→grad/opcina/zupanija).
+- UI: popis klijenata grupiran po tipu (JLS/poduzeća/institucije) s oznakama; detalj klijenta prikazuje
+  atribute ovisno o tipu; **unos klijenta** `/klijenti/novi` (forma + server akcija `createKlijent`,
+  provjera superadmina → service-role upis tenant+profil u `lib/supabase/admin.ts`).
+- 2 demo klijenta (poduzeće, institucija) uz demo JLS-ove. Napomena: unos/prijava se mogu testirati tek nakon SMTP-a (prijava).
 
 ### 🔜 Faza 3+ — Pravi pretplatnici (kasnije)
 - Pozivnice/članstvo za JLS korisnike, admin po tenantu, upravljanje JLS profilima iz UI-a.
