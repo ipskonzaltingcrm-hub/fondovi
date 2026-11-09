@@ -99,24 +99,54 @@ export function toCallRow(adapter: SourceAdapter, raw: RawCall): Omit<CallRow, "
   return { ...base, content_hash: contentHash(base) };
 }
 
-/** Jednostavan fetch s timeoutom i pristojnim User-Agentom. */
-export async function httpGet(
+// Pošten, prepoznatljiv User-Agent (scraper se ne pretvara da je preglednik).
+const INGEST_UA =
+  "EU-Radar-Ingest/1.0 (+https://fondovi.ips-konzalting.hr; kontakt: ams@ips-konzalting.hr)";
+
+async function fetchOnce(
   url: string,
   init?: RequestInit & { timeoutMs?: number },
 ): Promise<Response> {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), init?.timeoutMs ?? 20000);
+  const t = setTimeout(() => ctrl.abort(), init?.timeoutMs ?? 30000);
   try {
     return await fetch(url, {
       ...init,
       signal: ctrl.signal,
+      redirect: "follow",
       headers: {
-        "user-agent": "EU-Radar-Ingest/1.0 (+https://fondovi.ips-konzalting.hr)",
-        accept: "text/html,application/xhtml+xml,application/xml,application/json;q=0.9,*/*;q=0.8",
+        "user-agent": INGEST_UA,
+        accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7",
+        "accept-language": "hr-HR,hr;q=0.9,en;q=0.8",
         ...(init?.headers || {}),
       },
     });
   } finally {
     clearTimeout(t);
   }
+}
+
+/** Fetch s timeoutom, pregledničkim UA i do 3 pokušaja (backoff). */
+export async function httpGet(
+  url: string,
+  init?: RequestInit & { timeoutMs?: number; retries?: number },
+): Promise<Response> {
+  const retries = init?.retries ?? 2;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetchOnce(url, init);
+      // 5xx/429 → pokušaj ponovno; ostalo vrati odmah
+      if (res.status >= 500 || res.status === 429) {
+        lastErr = new Error(`HTTP ${res.status}`);
+      } else {
+        return res;
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+    if (attempt < retries) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
