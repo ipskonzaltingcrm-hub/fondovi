@@ -44,9 +44,11 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - **Vercel:** projekt `fondovi` = `prj_oMu8kdGWwiCnjwG0f2XYQpa8447q` · tim `team_GkIICWlRQYDUHv1V4igDAUoQ` (slug `ips-b26c`)
   - Produkcija: **https://fondovi-ips-b26c.vercel.app** (alias `fondovi-alpha.vercel.app`)
   - Git-linked auto-deploy iz `main`
-  - **Vercel Deployment Protection (Vercel SSO) je UKLJUČENA** → sajt zasad vidi samo prijavljeni na Vercel
-    račun (vlasnica). Pravi JLS korisnici ga ne mogu otvoriti dok se ne isključi. Odluka vlasnice: **zasad držati zaštićeno.**
-    Isključuje se preko Vercel MCP `update_project` (ssoProtection) ili u dashboardu.
+  - **Produkcija je JAVNA (od 2026-11-10, odluka vlasnice):** Vercel SSO zaštita sužena na `deploymentType: "preview"` —
+    produkcijski URL svatko može otvoriti (vidi stranicu za prijavu), preview deployi ostaju zaštićeni.
+    Mijenja se preko Vercel MCP `update_project` (ssoProtection) ili u dashboardu.
+    ⚠️ Prijava je otvorena (`shouldCreateUser: true`) — svatko s linkom može napraviti račun i vidjeti katalog natječaja
+    (klijenti su zaštićeni RLS-om). Prije pravih pretplatnika odlučiti o pozivnicama / ograničenju registracije.
   - Env postavljene (sve okoline): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
     **`SUPABASE_SERVICE_ROLE_KEY` NIJE postavljen** (treba za Fazu 2 ingestion).
 - **Supabase:** projekt `fondovi` = ref **`iwdxcqjpnyzeotanqfkc`** · org `tpswibtedboqcrdmagoi` (IPS konzalting) ·
@@ -115,8 +117,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 
 ### 🔜 Otvoreno / sljedeće
 - ✅ **SMTP** riješen (2026-11-10): Resend → Supabase custom SMTP; testni kod stigao u inbox. Prijava radi na
-  testnom URL-u (vlasnica ga vidi jer je prijavljena na Vercel; Vercel zaštita je i dalje uključena).
-- Custom domena `fondovi.ips-konzalting.hr` + odluka o Vercel zaštiti.
+  produkcijskom URL-u, koji je od 2026-11-10 javno dostupan.
+- Custom domena `fondovi.ips-konzalting.hr`.
 - Moguće dalje: Obavijesti (novi + rokovi), Praćenje (watchlist), email-digest (ovisi o SMTP-u), deduplikacija poziva.
 
 ### 🔜 Faza 3+ — Pravi pretplatnici (kasnije)
@@ -203,7 +205,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 - [ ] **Selidba na novu tvrtku (kad bude osnovana):** novi Supabase (pustiti migracije + prebaciti podatke),
   novi Vercel (spojiti repo, prepisati env), GitHub transfer po želji. Do tada sve radimo ovdje.
   Uz selidbu: ažurirati Supabase Site/Redirect URL-ove i ponovno upisati SMTP postavke u novi Supabase.
-- [ ] **Isključiti Vercel Deployment Protection** kad se krene prema pravim korisnicima (sad namjerno uključeno).
+- [x] **Vercel Deployment Protection** isključena za produkciju (2026-11-10); preview ostaje zaštićen.
+- [ ] **Ograničiti registraciju** (pozivnice / allowlist) prije pravih pretplatnika — sad se može prijaviti bilo koji email.
 - [ ] **Custom domena** `fondovi.ips-konzalting.hr` → Vercel + DNS + dodati u Supabase Redirect URLs.
 - [ ] **`SUPABASE_SERVICE_ROLE_KEY`** postaviti u Vercel (Faza 2 ingestion).
 - [ ] Očistiti stari `jls-radar` repo + Vercel projekt.
