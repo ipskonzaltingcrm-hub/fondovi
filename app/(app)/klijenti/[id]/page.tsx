@@ -7,9 +7,11 @@ import {
   Sprout,
   Mail,
   Target,
+  FileText,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   DeadlinePill,
@@ -65,7 +67,11 @@ export default async function JlsProfilePage({
         </Badge>
       </div>
 
-      <PageHeader title={jls.naziv} />
+      <PageHeader title={jls.naziv}>
+        <ButtonLink href={`/izvjestaj/${jls.id}`} variant="primary">
+          <FileText className="h-4 w-4" /> Izvještaj
+        </ButtonLink>
+      </PageHeader>
 
       {/* Atributi profila */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
