@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-09** (Faze A–C gotove: 9 izvora/201 poziv, matching radi, klijenti s tipovima + unos).
+> Zadnje ažurirano: **2026-11-10** (Faze A–C gotove; dodani filtri na natječajima + izvještaj po klijentu PDF/CSV).
 
 ---
 
@@ -105,6 +105,19 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
   atribute ovisno o tipu; **unos klijenta** `/klijenti/novi` (forma + server akcija `createKlijent`,
   provjera superadmina → service-role upis tenant+profil u `lib/supabase/admin.ts`).
 - 2 demo klijenta (poduzeće, institucija) uz demo JLS-ove. Napomena: unos/prijava se mogu testirati tek nakon SMTP-a (prijava).
+
+### ✅ Dodatne funkcije (2026-11-10)
+- **Natječaji — pretraga + filtri** (`components/pozivi/calls-explorer.tsx`): tekst, status, razina, **sektor**,
+  **prijavitelj za sve tipove** (gradovi/općine/županije/LAG/poduzeća/institucije/udruge), sortiranje.
+- **Izvještaj po klijentu**: `/izvjestaj/[id]` — brendiran, printabilan (Ispis → Spremi kao PDF) popis natječaja
+  na koje se klijent može prijaviti (rangirano); `/izvjestaj/[id]/csv` — CSV izvoz (Excel). Gumb na profilu klijenta.
+  Alat za IPS-ovu prodaju/isporuku.
+
+### 🔜 Otvoreno / sljedeće
+- **SMTP** (prijava) — u tijeku: MailerSend (već na domeni preko SPF-a) → Supabase custom SMTP. Dok ne proradi,
+  app se ne može koristiti kroz prijavu (sve ostalo je spremno).
+- Custom domena `fondovi.ips-konzalting.hr` + odluka o Vercel zaštiti.
+- Moguće dalje: Obavijesti (novi + rokovi), Praćenje (watchlist), email-digest (ovisi o SMTP-u), deduplikacija poziva.
 
 ### 🔜 Faza 3+ — Pravi pretplatnici (kasnije)
 - Pozivnice/članstvo za JLS korisnike, admin po tenantu, upravljanje JLS profilima iz UI-a.
