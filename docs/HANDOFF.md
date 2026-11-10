@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-10** (Faze A–C gotove; dodani filtri na natječajima + izvještaj po klijentu PDF/CSV).
+> Zadnje ažurirano: **2026-11-10** (Faze A–C gotove; filtri + izvještaj po klijentu; **custom SMTP preko Resenda radi** — prijava kodom funkcionira).
 
 ---
 
@@ -86,7 +86,7 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
   - **GEO-IP (ispravka):** blokada NIJE čisto geografska — HR portali blokiraju **GitHub/Azure IP-eve**, ali **Vercelovi
     IP-evi prolaze** (test se izvršio u iad1/US i uspio). Zato: SEDIA→GitHub, HR izvori→Vercel. `egress` razdvajanje stoji.
     (Pozor: pretjerano lokalno testiranje ruralnirazvoj.hr može okinuti privremenu blokadu tvog HR IP-a; u produkciji 1×/6h — nije problem.)
-- Custom SMTP (slanje s `@ips-konzalting.hr` → bolja dostava, bez malog limita ugrađenog maila).
+- ✅ Custom SMTP (Resend, poddomena `radar.ips-konzalting.hr`) — vidi §6.
 - Spajanje custom domene `fondovi.ips-konzalting.hr` + isključivanje Vercel zaštite.
 
 ### ✅ Faza B — Matching po JLS (GOTOVO)
@@ -114,8 +114,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
   Alat za IPS-ovu prodaju/isporuku.
 
 ### 🔜 Otvoreno / sljedeće
-- **SMTP** (prijava) — u tijeku: MailerSend (već na domeni preko SPF-a) → Supabase custom SMTP. Dok ne proradi,
-  app se ne može koristiti kroz prijavu (sve ostalo je spremno).
+- ✅ **SMTP** riješen (2026-11-10): Resend → Supabase custom SMTP; testni kod stigao u inbox. Prijava radi na
+  testnom URL-u (vlasnica ga vidi jer je prijavljena na Vercel; Vercel zaštita je i dalje uključena).
 - Custom domena `fondovi.ips-konzalting.hr` + odluka o Vercel zaštiti.
 - Moguće dalje: Obavijesti (novi + rokovi), Praćenje (watchlist), email-digest (ovisi o SMTP-u), deduplikacija poziva.
 
@@ -171,8 +171,15 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
   Uređeni su **Magic Link** i **Confirm signup** (naslovi "… — EU Radar"). URL varijabla se ne koristi.
 - **URL Configuration (postavljeno):** Site URL `https://fondovi-ips-b26c.vercel.app`;
   Redirect URLs `https://fondovi-ips-b26c.vercel.app/**` i `http://localhost:3000/**` (dodati custom domenu kasnije).
-- **Poznati blocker — email dostava:** ugrađeni Supabase email ima **vrlo nizak limit** (par/sat → "email rate limit exceeded")
-  i zna ići u spam. **Rješenje = custom SMTP (Faza 2).** Do tada: slati kod jednom i čekati reset limita.
+- **Email dostava — custom SMTP (RIJEŠENO 2026-11-10):** Resend (EU regija) na **poddomeni `radar.ips-konzalting.hr`**.
+  - Supabase SMTP: host `smtp.resend.com`, port `465`, user `resend`, pass = Resend API ključ (samo u Supabaseu, nigdje u repou),
+    pošiljatelj `EU Radar <no-reply@radar.ips-konzalting.hr>`. Rate limit slanja podignut s 2/h na 30/h.
+  - Cloudflare DNS (zona `ips-konzalting.hr`) — dodana SAMO 3 nova zapisa: TXT `resend._domainkey.radar` (DKIM),
+    CNAME `send.radar` i `rsend.radar` (→ `*.forge.rmta.net`, **DNS only**).
+  - **DMARC namjerno NIJE dodan:** Resend ga nudi na rootu (`_dmarc`), a to bi diralo M365. Ako zatreba (spam),
+    dodati izolirano kao `_dmarc.radar` (`v=DMARC1; p=none;`).
+  - ⛔ **M365 pošta IPS-a je kritična — ne dirati** root MX/SPF, `selector1/2._domainkey`, autodiscover i ostale M365 zapise.
+  - Ostaci starog pokušaja s MailerSendom (`litesrv._domainkey`, pogrešno Proxied) — nekorišteno, može se počistiti.
 - Status: auth korisnik `ams@ips-konzalting.hr` kreiran i **jest superadmin** (potvrđeno u bazi).
 
 ---
@@ -192,7 +199,10 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
 
 ## 8. Otvorene stavke / blokade
 
-- [ ] **Custom SMTP** za email (uklanja limit + spam) — preduvjet za pravu prijavu i Fazu 2.
+- [x] **Custom SMTP** za email — Resend, `radar.ips-konzalting.hr` (2026-11-10).
+- [ ] **Selidba na novu tvrtku (kad bude osnovana):** novi Supabase (pustiti migracije + prebaciti podatke),
+  novi Vercel (spojiti repo, prepisati env), GitHub transfer po želji. Do tada sve radimo ovdje.
+  Uz selidbu: ažurirati Supabase Site/Redirect URL-ove i ponovno upisati SMTP postavke u novi Supabase.
 - [ ] **Isključiti Vercel Deployment Protection** kad se krene prema pravim korisnicima (sad namjerno uključeno).
 - [ ] **Custom domena** `fondovi.ips-konzalting.hr` → Vercel + DNS + dodati u Supabase Redirect URLs.
 - [ ] **`SUPABASE_SERVICE_ROLE_KEY`** postaviti u Vercel (Faza 2 ingestion).
