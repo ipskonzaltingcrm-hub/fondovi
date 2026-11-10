@@ -22,6 +22,10 @@ const applicantOptions: { value: ApplicantType | "svi"; label: string }[] = [
   { value: "grad", label: "Gradovi" },
   { value: "opcina", label: "Općine" },
   { value: "zupanija", label: "Županije" },
+  { value: "lag", label: "LAG-ovi" },
+  { value: "tvrtka", label: "Poduzeća" },
+  { value: "ustanova", label: "Institucije" },
+  { value: "ngo", label: "Udruge" },
 ];
 
 export function CallsExplorer({
@@ -35,7 +39,16 @@ export function CallsExplorer({
   const [status, setStatus] = React.useState<CallStatus | "svi">("svi");
   const [level, setLevel] = React.useState<CallLevel | "sve">("sve");
   const [applicant, setApplicant] = React.useState<ApplicantType | "svi">("svi");
+  const [sektor, setSektor] = React.useState<string>("svi");
   const [sort, setSort] = React.useState<SortKey>("rok");
+
+  const sektorOptions = React.useMemo(
+    () =>
+      [...new Set(calls.flatMap((c) => c.sektori))].sort((a, b) =>
+        a.localeCompare(b, "hr"),
+      ),
+    [calls],
+  );
 
   const filtered = React.useMemo(() => {
     const text = q.trim().toLowerCase();
@@ -43,6 +56,7 @@ export function CallsExplorer({
       if (status !== "svi" && c.status !== status) return false;
       if (level !== "sve" && c.level !== level) return false;
       if (applicant !== "svi" && !c.prihvatljivi.includes(applicant)) return false;
+      if (sektor !== "svi" && !c.sektori.includes(sektor)) return false;
       if (text) {
         const hay = `${c.naslov} ${c.davatelj} ${c.program} ${c.sazetak} ${c.sektori.join(" ")}`.toLowerCase();
         if (!hay.includes(text)) return false;
@@ -64,9 +78,14 @@ export function CallsExplorer({
       return da - db;
     });
     return list;
-  }, [calls, q, status, level, applicant, sort]);
+  }, [calls, q, status, level, applicant, sektor, sort]);
 
-  const hasFilters = status !== "svi" || level !== "sve" || applicant !== "svi" || q !== "";
+  const hasFilters =
+    status !== "svi" ||
+    level !== "sve" ||
+    applicant !== "svi" ||
+    sektor !== "svi" ||
+    q !== "";
 
   return (
     <div>
@@ -106,6 +125,19 @@ export function CallsExplorer({
           </select>
 
           <select
+            value={sektor}
+            onChange={(e) => setSektor(e.target.value)}
+            className="h-9 rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-brand"
+          >
+            <option value="svi">Svi sektori</option>
+            {sektorOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
             className="h-9 rounded-md border border-border bg-background px-2.5 text-sm outline-none focus:border-brand"
@@ -138,6 +170,7 @@ export function CallsExplorer({
                 setStatus("svi");
                 setLevel("sve");
                 setApplicant("svi");
+                setSektor("svi");
               }}
               className="ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-muted hover:bg-surface-2"
             >

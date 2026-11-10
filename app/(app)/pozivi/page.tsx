@@ -16,7 +16,7 @@ export default async function PoziviPage({
     <div>
       <PageHeader
         title="Natječaji"
-        description="Svi pozivi za bespovratna sredstva i poticaje relevantni za JLS — lokalna, regionalna, nacionalna i EU razina."
+        description="Svi pozivi za bespovratna sredstva i poticaje za JLS, poduzeća i istraživačke institucije — lokalna, regionalna, nacionalna i EU razina."
       />
       <CallsExplorer calls={calls} initialQuery={q ?? ""} />
     </div>
