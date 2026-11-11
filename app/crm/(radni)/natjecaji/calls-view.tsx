@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, CheckCheck, ExternalLink, FolderPlus, Search, Star } from "lucide-react";
+import { Archive, ArchiveRestore, BellRing, CheckCheck, ExternalLink, FolderPlus, Search, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -348,6 +348,11 @@ function CallDrawer({
         <Link href={`/crm/projekti?novi=1&natjecaj=${call.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 text-sm font-medium">
           <FolderPlus className="h-4 w-4" /> Novi projekt
         </Link>
+        {canJudge && (
+          <Link href={`/crm/poruke?natjecaj=${call.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 text-sm font-medium">
+            <BellRing className="h-4 w-4" /> Obavijesti korisnike
+          </Link>
+        )}
         <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => markCallUnread(call.id))}>
           Označi nepročitanim
         </Button>

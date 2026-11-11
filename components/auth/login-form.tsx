@@ -40,7 +40,12 @@ export function LoginForm({ next = "/dashboard" }: { next?: string }) {
 
     setBusy(false);
     if (error) {
-      setError(error.message);
+      // Zatvorena registracija (CRM → Korisnici portala): baza odbija novog korisnika bez pozivnice.
+      setError(
+        /database error|saving new user|signups not allowed/i.test(error.message)
+          ? "Registracija na EU Radar trenutno je moguća samo uz pozivnicu. Ako već imate račun, provjerite e-mail adresu."
+          : error.message,
+      );
     } else {
       setStep("kod");
     }

@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 3 gotova**: Ponude, Prodaja (monitoring, official), Upitnici (javna forma), JLS prodaja; Faza 2: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
+> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 4 gotova**: Korisnici portala, pozivnice klijenata, zatvaranje registracije, pretplate i uplate, Poruke → Obavijesti u EU Radaru; Faza 3: Ponude, Prodaja (monitoring, official), Upitnici (javna forma), JLS prodaja; Faza 2: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
 
 ---
 
@@ -166,6 +166,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
     projekti + checklista; `project_id` na zadacima i povijesti) — vidi §13.
   - `0010_crm_ponude_prodaja` — EU Radar CRM Faza 3 (cjenik, ponude, prodaja, ciljevi, tjedni unos, upitnici s javnom
     formom — `crm_form_info`/`crm_form_submit` dostupni **anon**, JLS prodaja, `crm_settings`) — vidi §13.
+  - `0011_crm_portal` — EU Radar CRM Faza 4 (korisnici portala, pozivnice klijenata, **okidač `crm_signup_guard` na
+    `auth.users`** za registraciju samo uz pozivnicu, `profiles.portal_blocked_at`, pretplate/uplate, poruke u aplikaciji) — vidi §13.
 - **RLS model:** globalni katalog (`calls`, `sources`, `call_changes`) čitljiv svim prijavljenima,
   pisanje samo superadmin. Per-tenant tablice (`jls_profiles` itd.) vidljive članovima (`is_member(tenant_id)`)
   ili superadminu (bypass).
@@ -350,7 +352,7 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 - Faza 1 ✅ (2026-11-11): Klijenti (= EU Radar klijenti), Leadovi, Zadaci, Moj dan, Hot leadovi, Hot pregled.
 - Faza 2 ✅ (2026-11-11): Natječaji (CRM pogled na `calls`), EU Filter, Projekti i prijave.
 - Faza 3 ✅ (2026-11-11): Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
-- Faza 4: Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
+- Faza 4 ✅ (2026-11-11): Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
 - Faza 5: Chatbot brain, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke (prave, ne prototip).
 - Pipeline namjerno izostavljen dok ga vlasnica ne zatraži. Svaka faza završava izvještajem i pregledom vlasnice.
 
@@ -467,8 +469,36 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 - Izostavljeno iz IPS uzora: slanje e-mailom preko Resenda i praćenje e-mailova, PDF u Storageu, automatski prijelaz u „Istekla“,
   rate prije odobrenja projekta, SurveySparrow webhook i pravila trijaže po upitniku, cloud rutina za JLS signale, početno stanje iz Excela.
 
+### Faza 4 — pretplatnici EU Radara (2026-11-11, migracija `0011_crm_portal`)
+- **Korisnici portala** (`/crm/korisnici-portala`, konzultant+): popis svih ne-tim korisnika EU Radara (`crm_portal_users()` —
+  e-mail, registracija, zadnja prijava, klijenti kojima ima pristup, oznaka, lead). Filtri: novi, bez klijenta, neaktivni 30+,
+  sumnjivi/konkurencija, testni, blokirani. Panel korisnika: dodjela pristupa klijentu (`memberships`, uloge administrator klijenta /
+  član / samo čitanje — `crm_portal_set_membership`), oznaka i napomena (`crm_portal_meta`), blokada (admin; `profiles.portal_blocked_at`
+  + brisanje `auth.sessions`; `(app)/layout.tsx` šalje blokiranog na `/blokiran`). Brojka u izborniku: nove registracije od zadnjeg posjeta.
+- **Pozivnice klijenata** (`crm_portal_invites`, 14 dana): poveznica `/pristup?token=` (član tima je sam pošalje). Prihvaćanje istom
+  e-mail adresom (`crm_portal_accept`) ili automatski pri registraciji (okidač `crm_portal_accept_signup` na `profiles`). Pozvani
+  korisnici više ne postaju leadovi (`crm_lead_from_signup` preskače pozvane i članove klijenata).
+- **Registracija** (`crm_settings.registration`: `otvorena` | `pozivnica`, mijenja admin): BEFORE INSERT okidač
+  `crm_signup_guard` na `auth.users` odbija novi račun bez važeće pozivnice (tim ili klijent; ams@ uvijek prolazi). Postojeći korisnici
+  se prijavljuju normalno. Login forma pretvara grešku baze u poruku „samo uz pozivnicu“.
+- **Pretplate i uplate**: `crm_subscriptions` (paket, od–do, aktivna/otkazana), `crm_payments`. `crm_record_payment`: pretplata se
+  nastavlja na aktivnu bez praznine (1–36 mj.), uplata, prodaja (iznos bez PDV-a = uplata / 1,25), klijent → „Aktivan“ (i tenant),
+  povijest, zadatak „Izdaj račun“ evidentičaru. `crm_cancel_subscription` (+ po želji pauza pristupa). Tab „Pretplate i uplate“:
+  ističe u 30 dana, nije obnovljeno, zadnje uplate. Članovi klijenta vide svoje pretplate (RLS), uplate samo tim.
+- **Poruke i newsletter** (`/crm/poruke`, konzultant+): `crm_messages` + `crm_message_deliveries` — poruka stiže korisnicima u
+  aplikaciju EU Radar (stranica **Obavijesti**, više nije placeholder). Publika: svi / dodijeljeni klijentu / pretplatnici / probni /
+  bez klijenta / testni / odabrani klijenti (`crm_message_recipients`; preskače blokirane i „konkurenciju“). Probno = samo testni
+  korisnici; poslana poruka je zaključana; broj pročitanih. Iz detalja natječaja „Obavijesti korisnike“ priprema poruku za
+  prihvatljive klijente. **E-mail se ne šalje** — „Kopiraj adrese (Bcc)“ za slanje iz vlastite pošte (nema Resend ključa u aplikaciji).
+- **Provjereno:** 30 scenarija u poništenoj transakciji (zatvorena registracija odbija stranca, pozvani prolazi i odmah je član bez
+  leada, otvorena registracija → lead, prihvaćanje pozivnice samo istim e-mailom, uplate i nastavak pretplate, prodaja, zadaci,
+  poruke probno/stvarno/zaključavanje/pročitano, blokada, suradnik bez pristupa); tsc, build. Nije klikom provjereno nakon prijave.
+- Izostavljeno iz IPS uzora: Stripe/kartično plaćanje, push (Firebase), automatski podsjetnici i tjedni digest (pg_cron + e-mail
+  servis), editor e-maila blokovima, meko brisanje korisnika, „6 mj. bez natječaja“.
+
 ### Sigurnosna zakrpa (2026-11-11)
 - Od početka je pravilo `profiles_upd` + ovlast UPDATE nad svim stupcima dopuštalo svakom prijavljenom korisniku
   da sam sebi postavi `is_superadmin = true`. Nakon javnog otvaranja produkcije (2026-11-10) to je bilo iskoristivo.
   Provjereno: nitko nije iskoristio (superadmin samo ams@). Zakrpa `0005_zakrpa_profiles` (korisnik mijenja samo `full_name`).
-- Otvoreno: registracija je i dalje otvorena svima (`shouldCreateUser: true`) — rješava se u Fazi 4 (Korisnici portala).
+- Registracija: od Faze 4 se može zatvoriti (CRM → Korisnici portala → Registracija → „samo uz pozivnicu“); dok je vlasnica
+  ne zatvori, otvorena je svima (`shouldCreateUser: true` + `crm_settings.registration = otvorena`).

@@ -12,9 +12,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("is_superadmin,full_name,staff_role,staff_active")
+    .select("is_superadmin,full_name,staff_role,staff_active,portal_blocked_at")
     .eq("id", user.id)
     .maybeSingle();
+  // Korisnik kojeg je tim blokirao (CRM → Korisnici portala) ne koristi aplikaciju.
+  if (profile?.portal_blocked_at && !profile.staff_role && !profile.is_superadmin) redirect("/blokiran");
 
   return (
     <div className="flex min-h-screen w-full">

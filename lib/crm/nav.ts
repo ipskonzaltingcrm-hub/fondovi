@@ -34,7 +34,7 @@ export type CrmNavItem = {
   /** Kartica već radi (inače je u izborniku kao "uskoro"). */
   live?: boolean;
   /** Ključ brojke u izborniku (crm_nav_counts). */
-  count?: "leadovi" | "hot" | "zadaci" | "natjecaji";
+  count?: "leadovi" | "hot" | "zadaci" | "natjecaji" | "korisnici";
   adminOnly?: boolean;
   superadminOnly?: boolean;
   /** Što kartica radi — prikaz na početnoj i na stranici "uskoro". */
@@ -62,8 +62,8 @@ export const crmNav: CrmNavGroup[] = [
     label: "EU Radar portal",
     items: [
       { href: "/crm/chatbot", label: "Chatbot brain", icon: Bot, phase: 5, summary: "AI asistent u EU Radaru: upute, dokumenti, razgovori, kontakt → lead." },
-      { href: "/crm/korisnici-portala", label: "Korisnici portala", icon: Smartphone, phase: 4, summary: "Korisnici EU Radara: pretplate, pozivnice, uplate, kontrola registracije." },
-      { href: "/crm/poruke", label: "Poruke i newsletter", icon: MailPlus, phase: 4, summary: "Obavijesti pretplatnicima: novi natječaji po profilu, podsjetnici na rokove." },
+      { href: "/crm/korisnici-portala", label: "Korisnici portala", icon: Smartphone, phase: 4, live: true, count: "korisnici", summary: "Korisnici EU Radara: pretplate, pozivnice, uplate, kontrola registracije." },
+      { href: "/crm/poruke", label: "Poruke i newsletter", icon: MailPlus, phase: 4, live: true, summary: "Obavijesti pretplatnicima: novi natječaji po profilu, podsjetnici na rokove." },
     ],
   },
   {
