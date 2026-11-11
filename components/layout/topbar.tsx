@@ -2,15 +2,18 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronDown, LogOut, ShieldCheck, User } from "lucide-react";
+import Link from "next/link";
+import { Briefcase, Search, ChevronDown, LogOut, ShieldCheck, User } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 
 export function Topbar({
   userEmail,
   isSuperadmin,
+  isStaff = false,
 }: {
   userEmail: string;
   isSuperadmin: boolean;
+  isStaff?: boolean;
 }) {
   const router = useRouter();
   const [q, setQ] = React.useState("");
@@ -70,6 +73,14 @@ export function Topbar({
                   </div>
                 </div>
                 <div className="my-1 h-px bg-border" />
+                {isStaff && (
+                  <Link
+                    href="/crm"
+                    className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-surface-2"
+                  >
+                    <Briefcase className="h-4 w-4 text-muted-2" /> Otvori CRM
+                  </Link>
+                )}
                 <form action="/auth/signout" method="post">
                   <button
                     type="submit"

@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next") ?? "/dashboard";
-  const redirectTo = next.startsWith("/") ? next : "/dashboard";
+  const redirectTo = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
 
   const supabase = await createClient();
 

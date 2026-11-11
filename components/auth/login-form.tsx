@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Step = "email" | "kod";
 
-export function LoginForm() {
+export function LoginForm({ next = "/dashboard" }: { next?: string }) {
   const [step, setStep] = React.useState<Step>("email");
   const [email, setEmail] = React.useState("");
   const [code, setCode] = React.useState("");
@@ -34,7 +34,7 @@ export function LoginForm() {
       options: {
         shouldCreateUser: true,
         // Poveznica ostaje kao rezerva; glavni način je kod iz maila.
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
 
@@ -67,7 +67,7 @@ export function LoginForm() {
       return;
     }
     // Puna navigacija da proxy vidi novu sesiju iz kolačića.
-    window.location.href = "/dashboard";
+    window.location.href = next;
   }
 
   /* ---------------------------- Korak 2: unos koda ---------------------------- */

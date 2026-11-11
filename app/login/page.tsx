@@ -10,7 +10,14 @@ const points = [
   "Po svakom JLS-u: na koje se natječaje može prijaviti",
 ];
 
-export default function LoginPage() {
+/** Dopušta samo lokalnu putanju (sprječava otvoreno preusmjeravanje na tuđe domene). */
+function safeNext(v: string | string[] | undefined): string {
+  const s = Array.isArray(v) ? v[0] : v;
+  return s && s.startsWith("/") && !s.startsWith("//") ? s : "/dashboard";
+}
+
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const next = safeNext((await searchParams).next);
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
@@ -61,7 +68,7 @@ export default function LoginPage() {
             Unesite službeni email vaše organizacije.
           </p>
 
-          <LoginForm />
+          <LoginForm next={next} />
 
           <p className="mt-4 text-center text-xs text-muted-2">
             Bez lozinke — na email dobivate jednokratni kod za prijavu.

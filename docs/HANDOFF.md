@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-10** (Faze A–C gotove; filtri + izvještaj po klijentu; **custom SMTP preko Resenda radi** — prijava kodom funkcionira).
+> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 0 gotova**: `/crm`, uloge tima, Tim i uloge, Sigurnost, Dnevnik izmjena; **sigurnosna zakrpa `profiles`** — vidi §13).
 
 ---
 
@@ -155,6 +155,11 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
     (postavlja `is_superadmin=true` za `lower(email)='ams@ips-konzalting.hr'`), `touch_updated_at`.
   - `0002_seed.sql` — demo podaci (tenant `ips`, 7 izvora, 5 jls_profiles, 14 calls).
   - `0003_harden_functions` — učvršćivanje (search_path, revoke execute za anon) — zatvoreni security advisori.
+    (Datoteka je 2026-11-11 vraćena u repo iz `supabase_migrations.schema_migrations`.)
+  - `0004_klijent_tip` — tip klijenta (jls/poduzece/institucija).
+  - `0005_zakrpa_profiles` — **sigurnosna zakrpa** (2026-11-11): korisnik smije mijenjati samo `profiles.full_name`.
+  - `0006_crm_temelj` — EU Radar CRM Faza 0 (uloge tima, pozivnice, dnevnik, prijave) — vidi §13.
+  - `0007_revoke_public_helpers` — `is_superadmin/is_member/is_tenant_admin` samo za prijavljene (advisor 0028).
 - **RLS model:** globalni katalog (`calls`, `sources`, `call_changes`) čitljiv svim prijavljenima,
   pisanje samo superadmin. Per-tenant tablice (`jls_profiles` itd.) vidljive članovima (`is_member(tenant_id)`)
   ili superadminu (bypass).
@@ -323,3 +328,60 @@ Filtar "JLS prihvatljiv prijavitelj" — ključne riječi: JLS, JLP(R)S, grad, o
 > Napomena o JLS-relevantnosti: ruralni razvoj je djelomično JLS (ruralna infrastruktura, LAG/LEADER);
 > dio poziva cilja OPG/poljoprivrednike. Jezgra JLS vrijednosti je u **FZOEU** i **eufondovi (ITP/urbano)**.
 > `prihvatljivi` se iz liste ne može pouzdano iščitati → zasad prazno; profinjivanje matchinga kasnije.
+
+---
+
+## 13. EU Radar CRM (interni CRM tima) — od 2026-11-11
+
+**Odluka vlasnice (2026-11-11):** interni CRM po uzoru na IPS Hub (IPS CRM), **unutar ove aplikacije** (`/crm`)
+i na **istoj bazi `fondovi`** — klijent u CRM-u je isti zapis kao EU Radar klijent (`tenants` + `jls_profiles`),
+natječaji su `calls`. Potpuno odvojeno od IPS CRM-a: nikakva veza s bazom `uwzmorfxsyltpivqpmpq`, nikakav uvoz
+IPS podataka. Kod IPS Huba (`C:\Users\ams\Claude code\CRM\ips-crm`) smije služiti kao predložak (kopija koda).
+Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko proxyja, kao portal u IPS Hubu).
+
+**23 kartice** (iz PDF-a „IPS Hub — kartice izbornika“), raspored u `lib/crm/nav.ts` (polje `phase`, `live`):
+- Faza 0 ✅ temelj: uloge, ljuska, **Tim i uloge**, **Sigurnost**, **Dnevnik izmjena**.
+- Faza 1: Klijenti (= EU Radar klijenti), Leadovi, Zadaci, Moj dan, Hot leadovi, Hot pregled.
+- Faza 2: Natječaji (CRM pogled na `calls`), EU Filter, Projekti i prijave.
+- Faza 3: Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
+- Faza 4: Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
+- Faza 5: Chatbot brain, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke (prave, ne prototip).
+- Pipeline namjerno izostavljen dok ga vlasnica ne zatraži. Svaka faza završava izvještajem i pregledom vlasnice.
+
+### Model uloga (migracija `0006_crm_temelj`)
+- Tim = `profiles.staff_role` (`superadmin|admin|konzultant|suradnik`) + `staff_active`; klijenti imaju `staff_role = null`.
+- Superadmin je samo vlasnica (postavlja `handle_new_user` za ams@ i update postojećeg profila); ne dodjeljuje se pozivnicom.
+- Pomoćne funkcije: `crm_role()`, `is_staff()`, `is_crm_admin()`; politika `profiles_staff_read` (tim vidi profile tima).
+- **Sve izmjene uloga isključivo kroz SECURITY DEFINER RPC-ove** s provjerama: `crm_invite`, `crm_revoke_invitation`,
+  `crm_invitation_info`, `crm_accept_invitation`, `crm_update_member` (nitko ne mijenja vlastitu ulogu; admin ne dira
+  admine ni superadmina; deaktivacija briše `auth.sessions`), `crm_sign_out_member`.
+- Pozivnica: `crm_invitations` (token 64 hex, 7 dana). Admin dobije poveznicu `/crm/pozivnica?token=…` i **sam je pošalje**
+  (e-mail se ne šalje automatski). Pozvani se prijavi kodom **istom adresom** i klikne „Prihvati pozivnicu“.
+  Proxy sada čuva query u `?next=` i prijava vraća na `next` (samo lokalne putanje).
+- Dnevnik: `crm_audit_log` (čita samo admin; pišu samo okidači/funkcije). Okidač `crm_audit_row` na `tenants`,
+  `jls_profiles`, `profiles`, `crm_invitations` (diff `{"polje":[staro,novo]}`, bez `token`). `crm_log` za pregled/izvoz
+  (pregled istog zapisa unutar 10 min jednom). Upis preko service-role ključa (npr. `createKlijent`) bilježi se kao „Sustav / servis“.
+- Prijave: `crm_sessions` (po `session_id` iz JWT-a), `crm_touch_session` iz CRM layouta; `crm_session_list`, `crm_team_security`.
+
+### Kod
+- `app/crm/(radni)/layout.tsx` — zaštita (`requireStaff` → `/crm/bez-pristupa`), bilježenje sesije, ljuska.
+- `app/crm/(radni)/page.tsx` — početna (karta faza; „Moj dan“ dolazi u Fazi 1); `[...kartica]/page.tsx` — „uskoro“ za kartice iz kasnijih faza.
+- `app/crm/(radni)/{tim,sigurnost,dnevnik}/` — kartice Faze 0 (page.tsx server, *-view.tsx klijent, actions.ts).
+- `app/crm/pozivnica/`, `app/crm/bez-pristupa/` — izvan zaštićene grupe.
+- `lib/crm/{session,roles,nav,format}.ts`, `components/crm/{crm-sidebar,crm-topbar,ui}.tsx`.
+- EU Radar topbar: članovi tima imaju „Otvori CRM“.
+- Obrasci (kao IPS Hub): čitanje u server `page.tsx`, pisanje kroz server akcije koje zovu RPC (RLS/provjere u bazi),
+  `ActionResult`, poruke grešaka iz baze na hrvatskom (`dbMessage`). Nakon promjena ruta: `npx next typegen`.
+
+### Provjereno (2026-11-11)
+- tsc, eslint, `npm run build` prolaze.
+- Logika u bazi testirana simulacijom korisnika u poništenoj transakciji (14 provjera: pozivnica, ponovno prihvaćanje,
+  konzultant ne poziva, nema samopromocije, superadmin nedodirljiv, deaktivacija, vidljivost dnevnika i profila).
+- Preusmjeravanje bez prijave čuva token pozivnice. Prikaz stranica nakon prijave nije provjeren automatski
+  (prijava traži kod iz vlasničinog e-maila).
+
+### Sigurnosna zakrpa (2026-11-11)
+- Od početka je pravilo `profiles_upd` + ovlast UPDATE nad svim stupcima dopuštalo svakom prijavljenom korisniku
+  da sam sebi postavi `is_superadmin = true`. Nakon javnog otvaranja produkcije (2026-11-10) to je bilo iskoristivo.
+  Provjereno: nitko nije iskoristio (superadmin samo ams@). Zakrpa `0005_zakrpa_profiles` (korisnik mijenja samo `full_name`).
+- Otvoreno: registracija je i dalje otvorena svima (`shouldCreateUser: true`) — rješava se u Fazi 4 (Korisnici portala).
