@@ -13,7 +13,7 @@ export function CrmSidebar({
 }: {
   isAdmin: boolean;
   isSuperadmin: boolean;
-  counts?: Partial<Record<"leadovi" | "hot" | "zadaci", number>>;
+  counts?: Partial<Record<"leadovi" | "hot" | "zadaci" | "natjecaji", number>>;
 }) {
   const pathname = usePathname();
   const groups = crmNavFor(isAdmin, isSuperadmin);

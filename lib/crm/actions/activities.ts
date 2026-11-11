@@ -6,7 +6,7 @@ import { dbMessage, type ActionResult } from "@/lib/crm/session";
 import type { Activity } from "@/lib/crm/data";
 import type { ActivityVrsta } from "@/lib/crm/options";
 
-export type ActivityTarget = { lead_id?: string | null; jls_profile_id?: string | null; task_id?: string | null };
+export type ActivityTarget = { lead_id?: string | null; jls_profile_id?: string | null; task_id?: string | null; project_id?: string | null };
 
 /** Ručni upis u povijest (poziv, bilješka, e-mail, sastanak, komentar zadatka). */
 export async function addActivity(target: ActivityTarget, vrsta: ActivityVrsta, body: string): Promise<ActionResult> {
@@ -19,6 +19,7 @@ export async function addActivity(target: ActivityTarget, vrsta: ActivityVrsta, 
     lead_id: target.lead_id ?? null,
     jls_profile_id: target.jls_profile_id ?? null,
     task_id: target.task_id ?? null,
+    ...(target.project_id ? { project_id: target.project_id } : {}),
   });
   if (error) return { ok: false, error: dbMessage(error) };
   revalidatePath("/crm", "layout");
@@ -33,7 +34,8 @@ export async function loadActivities(target: ActivityTarget): Promise<Activity[]
     .select("id,at,actor_name,vrsta,body,lead_id,jls_profile_id,task_id")
     .order("at", { ascending: false })
     .limit(200);
-  if (target.lead_id) q = q.eq("lead_id", target.lead_id);
+  if (target.project_id) q = q.eq("project_id", target.project_id);
+  else if (target.lead_id) q = q.eq("lead_id", target.lead_id);
   else if (target.task_id) q = q.eq("task_id", target.task_id);
   else if (target.jls_profile_id) q = q.eq("jls_profile_id", target.jls_profile_id);
   else return [];

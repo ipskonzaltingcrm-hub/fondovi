@@ -41,6 +41,7 @@ export function TaskDialog({
       lead_id: task?.lead_id ?? preset?.lead_id ?? "",
       jls_profile_id: task?.jls_profile_id ?? preset?.jls_profile_id ?? "",
       call_id: task?.call_id ?? preset?.call_id ?? "",
+      project_id: task?.project_id ?? preset?.project_id ?? "",
     }),
     [task, preset, meId],
   );
@@ -140,6 +141,16 @@ export function TaskDialog({
             {refs.clients.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.naziv}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Projekt" className="sm:col-span-2">
+          <select className={inputClass} value={f.project_id ?? ""} onChange={(e) => set("project_id", e.target.value)}>
+            <option value="">—</option>
+            {refs.projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                PR-{p.broj} · {p.naziv}
               </option>
             ))}
           </select>

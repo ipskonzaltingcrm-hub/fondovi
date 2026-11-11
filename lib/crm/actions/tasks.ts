@@ -16,6 +16,7 @@ export type TaskInput = {
   lead_id?: string | null;
   jls_profile_id?: string | null;
   call_id?: string | null;
+  project_id?: string | null;
 };
 
 function clean(input: TaskInput) {
@@ -32,6 +33,7 @@ function clean(input: TaskInput) {
     lead_id: input.lead_id || null,
     jls_profile_id: input.jls_profile_id || null,
     call_id: input.call_id || null,
+    project_id: input.project_id || null,
   };
 }
 

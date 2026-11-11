@@ -70,15 +70,17 @@ export type Task = {
   lead_id: string | null;
   jls_profile_id: string | null;
   call_id: string | null;
+  project_id: string | null;
   done_at: string | null;
   created_by: string | null;
   created_at: string;
+  project?: { broj: number; naziv: string } | null;
   lead?: { broj: number; naziv: string } | null;
   client?: { naziv: string } | null;
   call?: { naslov: string; slug: string } | null;
 };
 export const TASK_COLS =
-  "id,naslov,opis,vrsta,prioritet,rok,vrijeme,owner,lead_id,jls_profile_id,call_id,done_at,created_by,created_at,lead:crm_leads(broj,naziv),client:jls_profiles(naziv),call:calls(naslov,slug)";
+  "id,naslov,opis,vrsta,prioritet,rok,vrijeme,owner,lead_id,jls_profile_id,call_id,project_id,done_at,created_by,created_at,lead:crm_leads(broj,naziv),client:jls_profiles(naziv),call:calls(naslov,slug),project:crm_projects(broj,naziv)";
 
 export type Activity = {
   id: number;
@@ -89,6 +91,7 @@ export type Activity = {
   lead_id: string | null;
   jls_profile_id: string | null;
   task_id: string | null;
+  project_id?: string | null;
 };
 
 export type HotGroup = {
@@ -160,7 +163,48 @@ export const getLeadOptions = cache(async (): Promise<LeadOption[]> => {
 
 /** Zajednički šifrarnici za obrasce zadataka. */
 export async function getTaskRefs() {
-  const [team, leads, clients, calls] = await Promise.all([getTeam(), getLeadOptions(), getClientOptions(), getCallOptions()]);
-  return { team: team.filter((t) => t.active), leads, clients, calls };
+  const [team, leads, clients, calls, projects] = await Promise.all([getTeam(), getLeadOptions(), getClientOptions(), getCallOptions(), getProjectOptions()]);
+  return { team: team.filter((t) => t.active), leads, clients, calls, projects };
 }
 export type TaskRefs = Awaited<ReturnType<typeof getTaskRefs>>;
+
+// ------------------------------------------------------------------ Faza 2
+
+export type ProjectRow = {
+  id: string;
+  broj: number;
+  naziv: string;
+  jls_profile_id: string | null;
+  lead_id: string | null;
+  call_id: string | null;
+  program: string | null;
+  owner: string | null;
+  faza: import("./options").ProjectFaza;
+  rok_prijave: string | null;
+  iznos_projekta: number | null;
+  iznos_potpore: number | null;
+  predano_at: string | null;
+  odluka_at: string | null;
+  napomena: string | null;
+  archived_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  client?: { naziv: string } | null;
+  lead?: { broj: number; naziv: string } | null;
+  call?: { naslov: string; slug: string; rok_prijave: string | null } | null;
+  items?: { done_at: string | null }[];
+};
+export const PROJECT_COLS =
+  "id,broj,naziv,jls_profile_id,lead_id,call_id,program,owner,faza,rok_prijave,iznos_projekta,iznos_potpore,predano_at,odluka_at,napomena,archived_at,created_by,created_at,client:jls_profiles(naziv),lead:crm_leads(broj,naziv),call:calls(naslov,slug,rok_prijave),items:crm_project_items(done_at)";
+
+export type ProjectOption = { id: string; broj: number; naziv: string };
+export const getProjectOptions = cache(async (): Promise<ProjectOption[]> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("crm_projects")
+    .select("id,broj,naziv")
+    .is("archived_at", null)
+    .order("broj", { ascending: false })
+    .limit(300);
+  return (data ?? []) as ProjectOption[];
+});

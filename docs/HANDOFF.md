@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 1 gotova**: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
+> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 2 gotova**: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
 
 ---
 
@@ -162,6 +162,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
   - `0007_revoke_public_helpers` — `is_superadmin/is_member/is_tenant_admin` samo za prijavljene (advisor 0028).
   - `0008_crm_prodaja` — EU Radar CRM Faza 1 (leadovi, zadaci, aktivnosti, hot grupe, CRM podaci/kontakti klijenta,
     registracija → lead, `jls_staff_read`: tim čita klijente) — vidi §13.
+  - `0009_crm_natjecaji_projekti` — EU Radar CRM Faza 2 (timska procjena i pročitano za `calls`, rekla-kazala,
+    projekti + checklista; `project_id` na zadacima i povijesti) — vidi §13.
 - **RLS model:** globalni katalog (`calls`, `sources`, `call_changes`) čitljiv svim prijavljenima,
   pisanje samo superadmin. Per-tenant tablice (`jls_profiles` itd.) vidljive članovima (`is_member(tenant_id)`)
   ili superadminu (bypass).
@@ -344,7 +346,7 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 **23 kartice** (iz PDF-a „IPS Hub — kartice izbornika“), raspored u `lib/crm/nav.ts` (polje `phase`, `live`):
 - Faza 0 ✅ temelj: uloge, ljuska, **Tim i uloge**, **Sigurnost**, **Dnevnik izmjena**.
 - Faza 1 ✅ (2026-11-11): Klijenti (= EU Radar klijenti), Leadovi, Zadaci, Moj dan, Hot leadovi, Hot pregled.
-- Faza 2: Natječaji (CRM pogled na `calls`), EU Filter, Projekti i prijave.
+- Faza 2 ✅ (2026-11-11): Natječaji (CRM pogled na `calls`), EU Filter, Projekti i prijave.
 - Faza 3: Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
 - Faza 4: Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
 - Faza 5: Chatbot brain, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke (prave, ne prototip).
@@ -410,6 +412,28 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
   tsc, eslint, build; PostgREST veze (embed) provjerene. **Nije provjereno klikom** nakon prijave (kod stiže na vlasničin e-mail).
 - Izostavljeno iz IPS uzora (dolazi kasnije): odsutnosti/zamjene, pipeline/prilike, ponude, financije klijenta (GFI), automatska trijaža,
   dupli leadovi/spajanje, kanban povlačenje unutar hot kartice (premještanje je povlačenjem na čip).
+
+### Faza 2 — natječaji u CRM-u (2026-11-11, migracija `0009_crm_natjecaji_projekti`)
+- **Natječaji** (`/crm/natjecaji`): CRM pogled na `calls` (zadnjih 400 dana). Timski sloj `crm_call_meta` (procjena
+  visoka/srednja/niska/nebitno, prioritet, arhiva, napomena — piše konzultant+), `crm_call_reads` (pročitano po članu,
+  `crm_mark_calls_read`). Bez ručne procjene relevantnost je automatska (`lib/crm/matching.ts` → `autoRelevance`: visoka ako
+  je klijent prihvatljiv sa score ≥ 70, srednja ako je prihvatljiv klijent ili otvoreni lead). Prioritetno = ručno ili
+  automatski visoka + otvoren. Detalj: sažetak, prihvatljivi prijavitelji, „Prihvatljivi klijenti i leadovi“ → „Napravi N
+  zadataka Nazovi“ (`createCallTasks`, vlasnik zadatka = vlasnik zapisa), „Novi projekt“. Tab Izvori = `sources` (čitanje).
+  Brojka u izborniku: novi neistekli natječaji od zadnjeg posjeta, bez niskih/nebitnih/arhiviranih. Nema AI procjene (EU Radar
+  ingest je deterministički) — kandidat za Fazu 5.
+- **EU Filter** (`/crm/eu-filter`): Klijent → natječaji (klijent / otvoreni lead / brza provjera bez spremanja; ✓/✗/? po uvjetu,
+  „Najviše bi pomoglo upisati“ = sektori koji bi otvorili najviše natječaja; PDF = postojeći `/izvjestaj/[slug]`), Natječaj →
+  klijenti, Programi (grupirano po `calls.program`), Rekla-kazala (`crm_hearsay`, konzultant+). Pravila = `matchCall` iz
+  `lib/domain.ts` (vrsta prijavitelja, sektori, status) — nema strojnih pravila po programu kao IPS (programs/program_criteria).
+- **Projekti i prijave** (`/crm/projekti`, `/crm/projekti/[id]`): `crm_projects` (PR-n, klijent ili lead, natječaj, program,
+  faze priprema→dokumentacija→predano→evaluacija→odobreno→isplata→završeno + odbijeno/odustalo, rok, iznosi; datum predaje i
+  odluke upisuje okidač), `crm_project_items` (checklista; 3 predloška u `lib/crm/options.ts` — prijedlozi, čekaju stvarne
+  popise vlasnice). Unos konzultant+, uređuje konzultant+ ili vlasnik, briše samo superadmin. Pretvorba leada prebacuje njegove
+  projekte na klijenta. `crm_tasks.project_id`, `crm_activities.project_id` (povijest projekta). Ulazi: klijent, lead, natječaj
+  (`?novi=1&klijent=&lead=&natjecaj=`). Moj dan ima karticu aktivnih projekata.
+- Izostavljeno iz IPS uzora: AI trijaža/procjena natječaja, „Provjeri sada“, obavijest korisnicima portala i reels (Faza 4/5),
+  strojna pravila po programu, praćenje propisa, utrošeno vrijeme (timesheet), pg_cron podsjetnici za rokove projekata.
 
 ### Sigurnosna zakrpa (2026-11-11)
 - Od početka je pravilo `profiles_upd` + ovlast UPDATE nad svim stupcima dopuštalo svakom prijavljenom korisniku

@@ -132,6 +132,16 @@ export function TaskDrawer({
               </dd>
             </>
           )}
+          {task.project && (
+            <>
+              <dt className="text-muted">Projekt</dt>
+              <dd>
+                <Link className="text-brand-ink hover:underline" href={`/crm/projekti/${task.project_id}`}>
+                  PR-{task.project.broj} · {task.project.naziv}
+                </Link>
+              </dd>
+            </>
+          )}
           {task.call && (
             <>
               <dt className="text-muted">Natječaj</dt>

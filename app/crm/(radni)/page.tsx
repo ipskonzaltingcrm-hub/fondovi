@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CalendarClock, CheckCircle2, Clock, Flame, Phone, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, Clock, Flame, FolderKanban, Phone, Plus, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -7,10 +7,11 @@ import { TriageBadge } from "@/components/crm/ui";
 import { crmNavFor, PHASE_LABEL, type CrmNavItem } from "@/lib/crm/nav";
 import { requireStaff } from "@/lib/crm/session";
 import { createClient } from "@/lib/supabase/server";
-import { LEAD_COLS, TASK_COLS, getTaskRefs, type Lead, type Task } from "@/lib/crm/data";
+import { LEAD_COLS, PROJECT_COLS, TASK_COLS, getTaskRefs, type Lead, type ProjectRow, type Task } from "@/lib/crm/data";
+import { one } from "@/lib/crm/clients-util";
 import { callQueue } from "@/lib/crm/leads-util";
 import { addDays, daysBetween, fmtDay, fmtLongToday, todayZg, weekStart } from "@/lib/crm/dates";
-import { KLIJENT_TIP, LEAD_IZVOR } from "@/lib/crm/options";
+import { KLIJENT_TIP, LEAD_IZVOR, PROJECT_ACTIVE, PROJECT_FAZA } from "@/lib/crm/options";
 import { getCalls } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { LeadChannels, MyTasks } from "./my-day";
@@ -23,7 +24,7 @@ export default async function MojDan() {
   const me = await requireStaff();
   const today = todayZg();
   const supabase = await createClient();
-  const [{ data: leadRows }, { data: taskRows }, calls, refs] = await Promise.all([
+  const [{ data: leadRows }, { data: taskRows }, calls, refs, { data: projRows }] = await Promise.all([
     supabase.from("crm_leads").select(LEAD_COLS).is("archived_at", null).limit(5000),
     supabase
       .from("crm_tasks")
@@ -34,7 +35,9 @@ export default async function MojDan() {
       .order("rok", { ascending: true, nullsFirst: false }),
     getCalls(),
     getTaskRefs(),
+    supabase.from("crm_projects").select(PROJECT_COLS).is("archived_at", null).in("faza", PROJECT_ACTIVE).order("rok_prijave", { nullsFirst: false }),
   ]);
+  const projects = ((projRows ?? []) as unknown as ProjectRow[]).map((p) => ({ ...p, client: one(p.client), lead: one(p.lead) }));
   const leads = (leadRows ?? []) as Lead[];
   const myTasks = (taskRows ?? []) as unknown as Task[];
 
@@ -246,6 +249,44 @@ export default async function MojDan() {
           )}
         </Card>
       </div>
+
+      {/* Projekti i prijave */}
+      <Card className="p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <FolderKanban className="h-4 w-4 text-brand-ink" />
+          <h2 className="flex-1 font-display font-semibold">Projekti i prijave</h2>
+          <Link href="/crm/projekti" className="text-xs font-medium text-brand-ink hover:underline">
+            Svi projekti
+          </Link>
+        </div>
+        {projects.length === 0 ? (
+          <p className="text-sm text-muted">Nema aktivnih projekata.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {projects.slice(0, 6).map((p) => {
+              const d = p.rok_prijave ? daysBetween(today, p.rok_prijave) : null;
+              const prep = p.faza === "priprema" || p.faza === "dokumentacija";
+              const total = p.items?.length ?? 0;
+              const done = p.items?.filter((i) => i.done_at).length ?? 0;
+              return (
+                <li key={p.id}>
+                  <Link href={`/crm/projekti/${p.id}`} className="flex items-center gap-3 py-2 text-sm hover:text-brand-ink">
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="text-muted-2">PR-{p.broj}</span> {p.naziv}
+                      <span className="text-xs text-muted"> · {p.client?.naziv ?? (p.lead ? `L-${p.lead.broj}` : "")}</span>
+                    </span>
+                    <Badge tone={PROJECT_FAZA[p.faza].tone}>{PROJECT_FAZA[p.faza].label}</Badge>
+                    {total > 0 && <span className="text-xs tabular text-muted">{done}/{total}</span>}
+                    <span className={cn("w-20 text-right text-xs tabular", prep && d != null && d >= 0 && d <= 7 ? "font-semibold text-danger" : "text-muted")}>
+                      {p.rok_prijave ? fmtDay(p.rok_prijave) : "—"}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
 
       <Roadmap isAdmin={me.isAdmin} isSuperadmin={me.isSuperadmin} />
     </div>

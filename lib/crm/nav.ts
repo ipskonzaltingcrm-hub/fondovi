@@ -34,7 +34,7 @@ export type CrmNavItem = {
   /** Kartica već radi (inače je u izborniku kao "uskoro"). */
   live?: boolean;
   /** Ključ brojke u izborniku (crm_nav_counts). */
-  count?: "leadovi" | "hot" | "zadaci";
+  count?: "leadovi" | "hot" | "zadaci" | "natjecaji";
   adminOnly?: boolean;
   superadminOnly?: boolean;
   /** Što kartica radi — prikaz na početnoj i na stranici "uskoro". */
@@ -76,9 +76,9 @@ export const crmNav: CrmNavGroup[] = [
   {
     label: "Natječaji",
     items: [
-      { href: "/crm/natjecaji", label: "Natječaji", icon: Landmark, phase: 2, summary: "CRM pogled na natječaje EU Radara: izvori, prihvatljivi klijenti → zadaci." },
-      { href: "/crm/eu-filter", label: "EU Filter", icon: Filter, phase: 2, summary: "Provjera prihvatljivosti klijenta po programima i uvjetima." },
-      { href: "/crm/projekti", label: "Projekti i prijave", icon: FolderKanban, phase: 2, summary: "Prijave klijenata od pripreme do isplate: faze, checklista, rokovi." },
+      { href: "/crm/natjecaji", label: "Natječaji", icon: Landmark, phase: 2, live: true, count: "natjecaji", summary: "CRM pogled na natječaje EU Radara: izvori, prihvatljivi klijenti → zadaci." },
+      { href: "/crm/eu-filter", label: "EU Filter", icon: Filter, phase: 2, live: true, summary: "Provjera prihvatljivosti klijenta po programima i uvjetima." },
+      { href: "/crm/projekti", label: "Projekti i prijave", icon: FolderKanban, phase: 2, live: true, summary: "Prijave klijenata od pripreme do isplate: faze, checklista, rokovi." },
     ],
   },
   {

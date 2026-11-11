@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckSquare, ExternalLink, FileText, Mail, Pencil, Phone, Plus, Star, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckSquare, ExternalLink, FileText, FolderPlus, Mail, Pencil, Phone, Plus, Star, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -107,6 +107,11 @@ export function ClientDetail({
           <Button size="sm" variant="secondary" onClick={() => setNewTask(true)}>
             <CheckSquare className="h-4 w-4" /> Zadatak
           </Button>
+          {!isSuradnik && (
+            <Link href={`/crm/projekti?novi=1&klijent=${client.id}`} className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm font-medium">
+              <FolderPlus className="h-4 w-4" /> Novi projekt
+            </Link>
+          )}
           <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
             <Pencil className="h-4 w-4" /> Uredi
           </Button>

@@ -105,3 +105,79 @@ export const SEKTORI = [
 export function leadNo(broj: number): string {
   return `L-${broj}`;
 }
+
+// ------------------------------------------------------------------ Faza 2
+
+export type Relevance = "visoka" | "srednja" | "niska" | "nebitno";
+export const RELEVANCE: Record<Relevance, { label: string; tone: Tone }> = {
+  visoka: { label: "Visoka", tone: "success" },
+  srednja: { label: "Srednja", tone: "warning" },
+  niska: { label: "Niska", tone: "neutral" },
+  nebitno: { label: "Nebitno", tone: "outline" },
+};
+
+export type ProjectFaza =
+  | "priprema" | "dokumentacija" | "predano" | "evaluacija" | "odobreno" | "isplata" | "zavrseno" | "odbijeno" | "odustalo";
+export const PROJECT_FAZA: Record<ProjectFaza, { label: string; tone: Tone }> = {
+  priprema: { label: "Priprema", tone: "info" },
+  dokumentacija: { label: "Dokumentacija", tone: "info" },
+  predano: { label: "Predano", tone: "brand" },
+  evaluacija: { label: "Evaluacija", tone: "warning" },
+  odobreno: { label: "Odobreno", tone: "success" },
+  isplata: { label: "Isplata", tone: "success" },
+  zavrseno: { label: "Završeno", tone: "neutral" },
+  odbijeno: { label: "Odbijeno", tone: "danger" },
+  odustalo: { label: "Klijent odustao", tone: "outline" },
+};
+/** Traka faza (glavni tok); odbijeno / odustalo su izlazi iz toka. */
+export const PROJECT_FLOW: ProjectFaza[] = ["priprema", "dokumentacija", "predano", "evaluacija", "odobreno", "isplata", "zavrseno"];
+export const PROJECT_ACTIVE: ProjectFaza[] = ["priprema", "dokumentacija", "predano", "evaluacija", "odobreno", "isplata"];
+
+/** Predlošci checkliste dokumentacije (prijedlozi — vlasnica ih može zamijeniti stvarnim popisima). */
+export const CHECKLIST_TEMPLATES: { key: string; label: string; items: { grupa: string; naziv: string }[] }[] = [
+  {
+    key: "jls",
+    label: "EU projekt JLS-a (infrastruktura)",
+    items: [
+      { grupa: "Priprema", naziv: "Odluka predstavničkog tijela o prijavi" },
+      { grupa: "Priprema", naziv: "Usklađenost sa strategijom / planom razvoja" },
+      { grupa: "Priprema", naziv: "Idejni / glavni projekt" },
+      { grupa: "Priprema", naziv: "Građevinska dozvola ili potvrda glavnog projekta" },
+      { grupa: "Priprema", naziv: "Troškovnik i procjena vrijednosti" },
+      { grupa: "Prijava", naziv: "Prijavni obrazac" },
+      { grupa: "Prijava", naziv: "Izjava o partnerstvu (ako je primjenjivo)" },
+      { grupa: "Prijava", naziv: "Izjava o osiguranom vlastitom udjelu (proračun)" },
+      { grupa: "Prijava", naziv: "Dokaz o vlasništvu / pravu korištenja" },
+      { grupa: "Predaja", naziv: "Kontrola prihvatljivosti i potpisi" },
+      { grupa: "Predaja", naziv: "Predaja u sustav (eFondovi / AGRONET / e-mail)" },
+    ],
+  },
+  {
+    key: "poduzece",
+    label: "Bespovratna potpora poduzeću",
+    items: [
+      { grupa: "Priprema", naziv: "GFI za zadnje dvije godine" },
+      { grupa: "Priprema", naziv: "Izjava o MSP statusu" },
+      { grupa: "Priprema", naziv: "Izjava o potporama male vrijednosti (de minimis)" },
+      { grupa: "Priprema", naziv: "Ponude / predračuni za ulaganje" },
+      { grupa: "Priprema", naziv: "Potvrda Porezne uprave o nepostojanju duga" },
+      { grupa: "Prijava", naziv: "Poslovni plan / opis projekta" },
+      { grupa: "Prijava", naziv: "Prijavni obrazac i proračun" },
+      { grupa: "Predaja", naziv: "Kontrola prihvatljivosti i potpisi" },
+      { grupa: "Predaja", naziv: "Predaja u sustav" },
+    ],
+  },
+  {
+    key: "isplata",
+    label: "Zahtjev za isplatu",
+    items: [
+      { grupa: "Dokazi", naziv: "Računi i dokazi o plaćanju" },
+      { grupa: "Dokazi", naziv: "Izvadci s računa" },
+      { grupa: "Dokazi", naziv: "Fotodokumentacija / zapisnik o primopredaji" },
+      { grupa: "Dokazi", naziv: "Dokaz o vidljivosti (EU oznake)" },
+      { grupa: "Zahtjev", naziv: "Obrazac zahtjeva za isplatu" },
+      { grupa: "Zahtjev", naziv: "Izvješće o provedbi" },
+      { grupa: "Zahtjev", naziv: "Predaja zahtjeva" },
+    ],
+  },
+];

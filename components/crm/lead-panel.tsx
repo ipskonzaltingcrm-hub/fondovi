@@ -8,6 +8,7 @@ import {
   Building2,
   CheckSquare,
   Flame,
+  FolderPlus,
   Mail,
   MoreHorizontal,
   Pencil,
@@ -158,6 +159,14 @@ export function LeadPanel({
           <Button size="sm" variant="secondary" onClick={() => setDialog("task")}>
             <CheckSquare className="h-4 w-4" /> Novi zadatak
           </Button>
+          {!isSuradnik && (
+            <Link
+              href={`/crm/projekti?novi=1&lead=${lead.id}${lead.jls_profile_id ? `&klijent=${lead.jls_profile_id}` : ""}`}
+              className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm font-medium"
+            >
+              <FolderPlus className="h-4 w-4" /> Projekt
+            </Link>
+          )}
           <Button size="sm" variant="secondary" onClick={() => setDialog("hot")}>
             <Flame className="h-4 w-4" /> {lead.hot_at ? "Hot lead" : "Označi kao hot"}
           </Button>
