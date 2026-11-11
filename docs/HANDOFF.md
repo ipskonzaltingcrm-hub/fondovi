@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 0 gotova**: `/crm`, uloge tima, Tim i uloge, Sigurnost, Dnevnik izmjena; **sigurnosna zakrpa `profiles`** — vidi §13).
+> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 1 gotova**: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
 
 ---
 
@@ -19,7 +19,7 @@ za **jedinice lokalne samouprave (JLS)** u Hrvatskoj: gradove, općine, županij
 Nije namijenjeno prodaji konkurentskim konzultantima. IPS = operator/superadmin; svaki JLS pretplatnik = tenant.
 
 - Vlasnik/operator: **IPS Konzalting**
-- Superadmin (vidi sve): **ams@ips-konzalting.hr**
+- Superadmin (vidi sve): **ams@ips-konzalting.hr**; od 2026-11-11 i **spicnagel@gmail.com** (ručno u bazi, na zahtjev vlasnice)
 - Jezik sučelja i komunikacije: **hrvatski**
 - Planirana domena: **fondovi.ips-konzalting.hr** (još nije spojena na Vercel)
 
@@ -160,6 +160,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
   - `0005_zakrpa_profiles` — **sigurnosna zakrpa** (2026-11-11): korisnik smije mijenjati samo `profiles.full_name`.
   - `0006_crm_temelj` — EU Radar CRM Faza 0 (uloge tima, pozivnice, dnevnik, prijave) — vidi §13.
   - `0007_revoke_public_helpers` — `is_superadmin/is_member/is_tenant_admin` samo za prijavljene (advisor 0028).
+  - `0008_crm_prodaja` — EU Radar CRM Faza 1 (leadovi, zadaci, aktivnosti, hot grupe, CRM podaci/kontakti klijenta,
+    registracija → lead, `jls_staff_read`: tim čita klijente) — vidi §13.
 - **RLS model:** globalni katalog (`calls`, `sources`, `call_changes`) čitljiv svim prijavljenima,
   pisanje samo superadmin. Per-tenant tablice (`jls_profiles` itd.) vidljive članovima (`is_member(tenant_id)`)
   ili superadminu (bypass).
@@ -341,7 +343,7 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 
 **23 kartice** (iz PDF-a „IPS Hub — kartice izbornika“), raspored u `lib/crm/nav.ts` (polje `phase`, `live`):
 - Faza 0 ✅ temelj: uloge, ljuska, **Tim i uloge**, **Sigurnost**, **Dnevnik izmjena**.
-- Faza 1: Klijenti (= EU Radar klijenti), Leadovi, Zadaci, Moj dan, Hot leadovi, Hot pregled.
+- Faza 1 ✅ (2026-11-11): Klijenti (= EU Radar klijenti), Leadovi, Zadaci, Moj dan, Hot leadovi, Hot pregled.
 - Faza 2: Natječaji (CRM pogled na `calls`), EU Filter, Projekti i prijave.
 - Faza 3: Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
 - Faza 4: Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
@@ -350,7 +352,9 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 
 ### Model uloga (migracija `0006_crm_temelj`)
 - Tim = `profiles.staff_role` (`superadmin|admin|konzultant|suradnik`) + `staff_active`; klijenti imaju `staff_role = null`.
-- Superadmin je samo vlasnica (postavlja `handle_new_user` za ams@ i update postojećeg profila); ne dodjeljuje se pozivnicom.
+- Superadmin: vlasnica (postavlja `handle_new_user` za ams@) i spicnagel@gmail.com (2026-11-11, ručni SQL
+  update `is_superadmin` + `staff_role`). Ne dodjeljuje se pozivnicom ni kroz aplikaciju — samo ručno u bazi.
+  Superadmini ne mogu mijenjati/deaktivirati jedan drugoga kroz aplikaciju (`crm_update_member`).
 - Pomoćne funkcije: `crm_role()`, `is_staff()`, `is_crm_admin()`; politika `profiles_staff_read` (tim vidi profile tima).
 - **Sve izmjene uloga isključivo kroz SECURITY DEFINER RPC-ove** s provjerama: `crm_invite`, `crm_revoke_invitation`,
   `crm_invitation_info`, `crm_accept_invitation`, `crm_update_member` (nitko ne mijenja vlastitu ulogu; admin ne dira
@@ -365,7 +369,7 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 
 ### Kod
 - `app/crm/(radni)/layout.tsx` — zaštita (`requireStaff` → `/crm/bez-pristupa`), bilježenje sesije, ljuska.
-- `app/crm/(radni)/page.tsx` — početna (karta faza; „Moj dan“ dolazi u Fazi 1); `[...kartica]/page.tsx` — „uskoro“ za kartice iz kasnijih faza.
+- `app/crm/(radni)/page.tsx` — Moj dan (+ `my-day.tsx`; plan faza sklopljen na dnu); `[...kartica]/page.tsx` — „uskoro“ za kartice iz kasnijih faza.
 - `app/crm/(radni)/{tim,sigurnost,dnevnik}/` — kartice Faze 0 (page.tsx server, *-view.tsx klijent, actions.ts).
 - `app/crm/pozivnica/`, `app/crm/bez-pristupa/` — izvan zaštićene grupe.
 - `lib/crm/{session,roles,nav,format}.ts`, `components/crm/{crm-sidebar,crm-topbar,ui}.tsx`.
@@ -379,6 +383,33 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
   konzultant ne poziva, nema samopromocije, superadmin nedodirljiv, deaktivacija, vidljivost dnevnika i profila).
 - Preusmjeravanje bez prijave čuva token pozivnice. Prikaz stranica nakon prijave nije provjeren automatski
   (prijava traži kod iz vlasničinog e-maila).
+
+### Faza 1 — prodajna jezgra (2026-11-11, migracija `0008_crm_prodaja`)
+- **Tablice:** `crm_leads` (broj L-n, `klijent_tip`, izvor, status novi→kontaktiran→u_razgovoru→ponuda→pretvoren/izgubljen,
+  trijaža = 50 % prihvatljivost + 25 % dokumentacija + 25 % financije — generirani stupac, hot polja `hot_at/hot_group_id/hot_note/hot_stage`,
+  `jls_profile_id` nakon pretvorbe), `crm_hot_groups` (natječaj kartice; neobavezno `call_id` → `calls`, rok iz EU Radara ili ručno),
+  `crm_tasks` (vrsta, prioritet, rok, vlasnik, veza lead/klijent/natječaj), `crm_activities` (povijest: ručno poziv/bilješka/e-mail/
+  sastanak/komentar; automatski „promjena“ i „zadatak“ iz okidača), `crm_clients` (CRM podaci uz `jls_profiles`: vlasnik, OIB, e-mail…),
+  `crm_contacts`, `crm_nav_seen`.
+- **Vidljivost:** `crm_can_see(owner, creator)` — konzultant+ sve, suradnik samo svoje/stvorene. Politika `jls_staff_read`: tim čita
+  klijente (`jls_profiles`) i u CRM-u i u EU Radar sučelju (suradnik samo klijente kojima je vlasnik).
+- **Pravila u bazi:** status „pretvoren“ samo kroz `crm_convert_lead` (novi tenant+profil+CRM podaci+kontakt, ili veza na postojećeg);
+  `crm_save_client` (novi klijent: konzultant+; sinkronizira `tenants`/`jls_profiles`); rok zadatka ne u prošlost; zadatak samo aktivnom
+  članu; suradnik arhivira samo svoj zadatak; hot grupe pišu konzultant+; nema brisanja leadova/zadataka (arhiva). Kolonske ovlasti
+  (`jls_profile_id`, `created_by`… nisu upisivi). Sve promjene → povijest zapisa + Dnevnik (`crm_audit_row`, natpis i za naslov/ime).
+- **Registracija na EU Radar → lead** (okidač `crm_profiles_lead` na `profiles`, izvor „eu_radar“, bez vlasnika; preskače tim i
+  otvorene pozivnice; nikad ne ruši registraciju). Postojeća registracija uvezena kao L-1.
+- **Brojke u izborniku:** `crm_nav_counts()` — Leadovi i Hot = novo od zadnjeg posjeta (`crm_mark_seen` pri otvaranju kartice; prvi put
+  zadnjih 7 dana), Zadaci = moji otvoreni s rokom danas ili ranije.
+- **Kod:** `lib/crm/{options,dates,data,leads-util,clients-util}.ts`, akcije `lib/crm/actions/{leads,tasks,activities,clients,hot}.ts`,
+  komponente `components/crm/{overlay,activity-feed,task-dialog,task-drawer,lead-form,lead-panel,client-form}.tsx`,
+  stranice `app/crm/(radni)/{leadovi,klijenti,klijenti/[id],zadaci,hot-leadovi,hot-pregled}`.
+- **Veza s EU Radarom:** kartica klijenta pokazuje prihvatljive natječaje (`matchesForJls`), poveznice na profil (`/klijenti/[slug]`) i
+  izvještaj (`/izvjestaj/[slug]`); zadatak i hot natječaj mogu se vezati na `calls`; Moj dan prikazuje rokove (14 dana) i nove pozive (3 dana).
+- **Provjereno:** 31 scenarij pravila u poništenoj transakciji (suradnik/konzultant/klijent, pretvorba, hot, zadaci, registracija → lead);
+  tsc, eslint, build; PostgREST veze (embed) provjerene. **Nije provjereno klikom** nakon prijave (kod stiže na vlasničin e-mail).
+- Izostavljeno iz IPS uzora (dolazi kasnije): odsutnosti/zamjene, pipeline/prilike, ponude, financije klijenta (GFI), automatska trijaža,
+  dupli leadovi/spajanje, kanban povlačenje unutar hot kartice (premještanje je povlačenjem na čip).
 
 ### Sigurnosna zakrpa (2026-11-11)
 - Od početka je pravilo `profiles_upd` + ovlast UPDATE nad svim stupcima dopuštalo svakom prijavljenom korisniku

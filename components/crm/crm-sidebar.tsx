@@ -6,7 +6,15 @@ import { crmNavFor } from "@/lib/crm/nav";
 import { LogoMark } from "@/components/layout/logo";
 import { cn } from "@/lib/utils";
 
-export function CrmSidebar({ isAdmin, isSuperadmin }: { isAdmin: boolean; isSuperadmin: boolean }) {
+export function CrmSidebar({
+  isAdmin,
+  isSuperadmin,
+  counts = {},
+}: {
+  isAdmin: boolean;
+  isSuperadmin: boolean;
+  counts?: Partial<Record<"leadovi" | "hot" | "zadaci", number>>;
+}) {
   const pathname = usePathname();
   const groups = crmNavFor(isAdmin, isSuperadmin);
 
@@ -58,6 +66,17 @@ export function CrmSidebar({ isAdmin, isSuperadmin }: { isAdmin: boolean; isSupe
                     )}
                   />
                   <span className="flex-1 truncate">{item.label}</span>
+                  {item.count && (counts[item.count] ?? 0) > 0 && (
+                    <span
+                      className={cn(
+                        "min-w-5 rounded-full px-1.5 py-px text-center text-[11px] font-semibold tabular",
+                        active ? "bg-brand-contrast/20 text-brand-contrast" : item.count === "zadaci" ? "bg-danger-soft text-danger" : "bg-brand-soft text-brand-ink",
+                      )}
+                      title={item.count === "zadaci" ? "Moji otvoreni zadaci s rokom danas ili ranije" : "Novo od tvog zadnjeg posjeta"}
+                    >
+                      {counts[item.count]}
+                    </span>
+                  )}
                   {!item.live && item.href !== "/crm" && (
                     <span
                       className={cn(
