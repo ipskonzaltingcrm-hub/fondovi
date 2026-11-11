@@ -38,6 +38,19 @@ export default async function MojDan() {
     supabase.from("crm_projects").select(PROJECT_COLS).is("archived_at", null).in("faza", PROJECT_ACTIVE).order("rok_prijave", { nullsFirst: false }),
   ]);
   const projects = ((projRows ?? []) as unknown as ProjectRow[]).map((p) => ({ ...p, client: one(p.client), lead: one(p.lead) }));
+
+  // Prodaja: ugovoreno ovaj mjesec (administrator: tim; ostali: svoje), cilj, otvorene ponude.
+  const monthStart = today.slice(0, 8) + "01";
+  const [{ data: salesRows }, { data: targetRows }, { data: openOffers }] = await Promise.all([
+    supabase.from("crm_sales").select("iznos,member,vrsta").gte("datum", monthStart),
+    supabase.from("crm_sales_targets").select("member,iznos").eq("mjesec", monthStart),
+    supabase.from("crm_offers").select("id,broj,predmet,iznos_neto,vrijedi_do").eq("status", "poslana").is("archived_at", null).order("sent_at"),
+  ]);
+  const mySales = (salesRows ?? []).filter((r) => me.isAdmin || r.member === me.id);
+  const ugovoreno = mySales.reduce((a, r) => a + Number(r.iznos), 0);
+  const cilj = (targetRows ?? []).find((t) => (me.isAdmin ? t.member === null : t.member === me.id))?.iznos as number | undefined;
+  const ponude = openOffers ?? [];
+  const eurM = new Intl.NumberFormat("hr-HR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
   const leads = (leadRows ?? []) as Lead[];
   const myTasks = (taskRows ?? []) as unknown as Task[];
 
@@ -133,6 +146,48 @@ export default async function MojDan() {
             <p className="mt-2 text-[11px] text-muted-2">Prosjek tjedna računa se od 1. 1.</p>
           </Card>
           <LeadChannels channels={channels} />
+        </div>
+      </section>
+
+      {/* 2 Prodaja */}
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-2">2 · Prodaja</h2>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <Card className="p-4">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-muted-2">{me.isAdmin ? "Ugovoreno ovaj mjesec (tim)" : "Moja prodaja ovaj mjesec"}</div>
+            <div className="font-display text-2xl font-bold tabular">{eurM.format(ugovoreno)}</div>
+            {cilj ? (
+              <>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                  <div className="h-full bg-brand" style={{ width: `${Math.min(100, (ugovoreno / cilj) * 100)}%` }} />
+                </div>
+                <div className="mt-1 text-xs text-muted">{Math.round((ugovoreno / cilj) * 100)} % cilja ({eurM.format(cilj)})</div>
+              </>
+            ) : (
+              <div className="mt-1 text-xs text-muted">Cilj nije postavljen (Prodajni monitoring → Ciljevi).</div>
+            )}
+          </Card>
+          <Card className="p-4 lg:col-span-2">
+            <div className="mb-2 flex items-center">
+              <div className="flex-1 text-[11px] font-medium uppercase tracking-wider text-muted-2">Otvorene ponude · {ponude.length} · {eurM.format(ponude.reduce((a, o) => a + Number(o.iznos_neto), 0))}</div>
+              <Link href="/crm/ponude" className="text-xs font-medium text-brand-ink hover:underline">Ponude</Link>
+            </div>
+            {ponude.length === 0 ? (
+              <p className="text-sm text-muted">Nema poslanih ponuda koje čekaju odgovor.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {ponude.slice(0, 5).map((o) => (
+                  <li key={o.id}>
+                    <Link href={`/crm/ponude/${o.id}`} className="flex items-center gap-3 py-1.5 text-sm hover:text-brand-ink">
+                      <span className="text-muted-2 tabular">{o.broj}</span>
+                      <span className="min-w-0 flex-1 truncate">{o.predmet}</span>
+                      <span className={cn("text-xs tabular", o.vrijedi_do && o.vrijedi_do < today ? "text-danger" : "text-muted")}>{eurM.format(Number(o.iznos_neto))}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
       </section>
 

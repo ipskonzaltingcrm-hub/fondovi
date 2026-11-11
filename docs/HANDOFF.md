@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 2 gotova**: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
+> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 3 gotova**: Ponude, Prodaja (monitoring, official), Upitnici (javna forma), JLS prodaja; Faza 2: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
 
 ---
 
@@ -164,6 +164,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
     registracija → lead, `jls_staff_read`: tim čita klijente) — vidi §13.
   - `0009_crm_natjecaji_projekti` — EU Radar CRM Faza 2 (timska procjena i pročitano za `calls`, rekla-kazala,
     projekti + checklista; `project_id` na zadacima i povijesti) — vidi §13.
+  - `0010_crm_ponude_prodaja` — EU Radar CRM Faza 3 (cjenik, ponude, prodaja, ciljevi, tjedni unos, upitnici s javnom
+    formom — `crm_form_info`/`crm_form_submit` dostupni **anon**, JLS prodaja, `crm_settings`) — vidi §13.
 - **RLS model:** globalni katalog (`calls`, `sources`, `call_changes`) čitljiv svim prijavljenima,
   pisanje samo superadmin. Per-tenant tablice (`jls_profiles` itd.) vidljive članovima (`is_member(tenant_id)`)
   ili superadminu (bypass).
@@ -347,7 +349,7 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 - Faza 0 ✅ temelj: uloge, ljuska, **Tim i uloge**, **Sigurnost**, **Dnevnik izmjena**.
 - Faza 1 ✅ (2026-11-11): Klijenti (= EU Radar klijenti), Leadovi, Zadaci, Moj dan, Hot leadovi, Hot pregled.
 - Faza 2 ✅ (2026-11-11): Natječaji (CRM pogled na `calls`), EU Filter, Projekti i prijave.
-- Faza 3: Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
+- Faza 3 ✅ (2026-11-11): Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
 - Faza 4: Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
 - Faza 5: Chatbot brain, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke (prave, ne prototip).
 - Pipeline namjerno izostavljen dok ga vlasnica ne zatraži. Svaka faza završava izvještajem i pregledom vlasnice.
@@ -434,6 +436,36 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
   (`?novi=1&klijent=&lead=&natjecaj=`). Moj dan ima karticu aktivnih projekata.
 - Izostavljeno iz IPS uzora: AI trijaža/procjena natječaja, „Provjeri sada“, obavijest korisnicima portala i reels (Faza 4/5),
   strojna pravila po programu, praćenje propisa, utrošeno vrijeme (timesheet), pg_cron podsjetnici za rokove projekata.
+
+### Faza 3 — ponude i prodaja (2026-11-11, migracija `0010_crm_ponude_prodaja`)
+- **CRM nikad sam ne šalje e-mailove** (ni ponude ni JLS nacrte): PDF/tekst se šalje iz vlastite pošte, pa se status označi ručno.
+- **Ponude** (`/crm/ponude`, `/crm/ponude/[id]`, PDF za ispis `/crm/ponuda-pdf/[id]`): `crm_offers` (broj PON-GGGG-MM-NN iz
+  okidača), `crm_offer_items` (postotne stavke = % visine investicije; zbrojevi okidačima), `crm_services` (cjenik — 8 prijedloga
+  **bez cijena**, upisuje administrator), `crm_settings` (`company` za zaglavlje PDF-a — OIB/adresa/IBAN prazni dok ih vlasnica ne
+  upiše; `offer_terms` = opći uvjeti, zasebna stranica PDF-a; `jls_budget_deadline`). Statusi samo kroz `crm_set_offer_status`:
+  nacrt→poslana (lead → status „Ponuda“)→prihvaćena (lead se pretvara u klijenta, stavke ulaze u `crm_sales`)/odbijena (razlog);
+  istekla; vrati u nacrt. Poslana ponuda je zaključana (okidač + RLS stavki samo za nacrt); arhivira se samo nacrt. Ulazi: lead
+  („Ponuda“), klijent („Nova ponuda“), JLS prodaja („Napravi ponudu“). Moj dan: otvorene ponude.
+- **Prodaja**: `crm_sales` (iz prihvaćenih ponuda + brzi unos; vrsta nova / „stara“ provedba; briše autor ili admin),
+  `crm_sales_targets` (mjesečni cilj tima/člana, admin; Moj dan pokazuje % cilja), `crm_week_entries` (tjedni unos koji za taj
+  tjedan i člana zamjenjuje brojače iz CRM-a). `crm_sales_events(from,to)` (SECURITY DEFINER, svi članovi tima) daje događaje
+  za Prodajni monitoring (`/crm/prodaja`: admin cijeli tim, ostali sebe; tjedno 8 tjedana / mjesečno + po usluzi; izvoz CSV za
+  admina, bilježi se u Dnevnik) i **Prodajni official** (`/crm/prodajni-official`: redovi = pokazatelji, stupci = članovi, svi vide
+  cijeli tim). Agregacija u `lib/crm/sales.ts` — tjedan pripada mjesecu svog četvrtka.
+- **Upitnici** (`/crm/upitnici`, javna forma `/upitnik/[token]` — javna ruta u `lib/supabase/proxy.ts`): `crm_forms` (token 64 hex,
+  „Nova poveznica“ ga mijenja), `crm_form_submissions` (dnevnik, čita admin). `crm_form_submit` (anon): honeypot, privola,
+  60/h po formi, duplikat po e-mailu ili zadnjih 8 znamenki telefona → bilješka na postojeći lead; inače novi lead (izvor
+  `upitnik`, vlasnik = zadani ili `crm_next_lead_owner()` — konzultant/admin najdulje bez automatskog leada) + zadatak „Nazovi u
+  24 h“; vraća broj otvorenih natječaja za podnositelja. Jedna forma je stvorena („Provjeri na što se možeš prijaviti“).
+- **JLS prodaja** (`/crm/jls-prodaja`, samo admin): `crm_jls_targets` (ciljna skupina — prazna; „+ JLS“ ili uvoz zalijepljenih
+  redaka), `crm_jls_drafts` (nacrti iz 4 predloška u `lib/crm/options.ts`; status nacrta pomiče status JLS-a samo naprijed),
+  `crm_jls_signals`, povijest u `crm_activities.jls_target_id`. `crm_jls_convert` otvara klijenta (preko `crm_save_client`).
+  Pločica „Do prijedloga proračuna 2027.“ (15. 11. 2026., `crm_settings.jls_budget_deadline`). Tekstove predložaka potvrđuje vlasnica.
+- **Provjereno:** 35 scenarija u poništenoj transakciji (upitnik kao anon + duplikat + greška u dnevniku, numeracija ponuda, postotne
+  stavke i preračun, zaključavanje, prihvaćanje → klijent + prodaja, suradnik bez prodaje, ciljevi, JLS nacrt → status samo naprijed,
+  pretvorba JLS-a); tsc, eslint, build; javna forma upitnika učitana lokalno. Ponude/prodaja nakon prijave nisu klikom provjerene.
+- Izostavljeno iz IPS uzora: slanje e-mailom preko Resenda i praćenje e-mailova, PDF u Storageu, automatski prijelaz u „Istekla“,
+  rate prije odobrenja projekta, SurveySparrow webhook i pravila trijaže po upitniku, cloud rutina za JLS signale, početno stanje iz Excela.
 
 ### Sigurnosna zakrpa (2026-11-11)
 - Od početka je pravilo `profiles_upd` + ovlast UPDATE nad svim stupcima dopuštalo svakom prijavljenom korisniku

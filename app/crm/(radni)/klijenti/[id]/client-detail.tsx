@@ -107,6 +107,9 @@ export function ClientDetail({
           <Button size="sm" variant="secondary" onClick={() => setNewTask(true)}>
             <CheckSquare className="h-4 w-4" /> Zadatak
           </Button>
+          <Link href={`/crm/ponude?nova=1&klijent=${client.id}`} className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm font-medium">
+            <FileText className="h-4 w-4" /> Nova ponuda
+          </Link>
           {!isSuradnik && (
             <Link href={`/crm/projekti?novi=1&klijent=${client.id}`} className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm font-medium">
               <FolderPlus className="h-4 w-4" /> Novi projekt

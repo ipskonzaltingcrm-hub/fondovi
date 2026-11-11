@@ -181,3 +181,103 @@ export const CHECKLIST_TEMPLATES: { key: string; label: string; items: { grupa: 
     ],
   },
 ];
+
+// ------------------------------------------------------------------ Faza 3
+
+export type OfferStatus = "nacrt" | "poslana" | "prihvacena" | "odbijena" | "istekla";
+export const OFFER_STATUS: Record<OfferStatus, { label: string; tone: Tone }> = {
+  nacrt: { label: "Nacrt", tone: "neutral" },
+  poslana: { label: "Poslana", tone: "info" },
+  prihvacena: { label: "Prihvaćena", tone: "success" },
+  odbijena: { label: "Odbijena", tone: "danger" },
+  istekla: { label: "Istekla", tone: "outline" },
+};
+
+export const SERVICE_KATEGORIJA: Record<string, string> = {
+  pretplata: "Pretplata EU Radar",
+  priprema: "Priprema projekata",
+  vodjenje: "Vođenje projekata",
+  strategija: "Strategije (JLS)",
+  savjetovanje: "Savjetovanje",
+  ostalo: "Ostalo",
+};
+export const JEDINICA: Record<string, string> = {
+  kom: "kom",
+  mjesec: "mjesec",
+  godina: "godina",
+  sat: "sat",
+  postotak: "% investicije",
+};
+
+export type JlsStatus = "nije_kontaktiran" | "mail_poslan" | "odgovorio" | "sastanak" | "ponuda" | "ugovor" | "odbio";
+export const JLS_STATUS: Record<JlsStatus, { label: string; tone: Tone }> = {
+  nije_kontaktiran: { label: "Nije kontaktiran", tone: "neutral" },
+  mail_poslan: { label: "Mail poslan", tone: "info" },
+  odgovorio: { label: "Odgovorio", tone: "warning" },
+  sastanak: { label: "Sastanak", tone: "brand" },
+  ponuda: { label: "Ponuda poslana", tone: "brand" },
+  ugovor: { label: "Ugovor", tone: "success" },
+  odbio: { label: "Odbio", tone: "outline" },
+};
+export const JLS_FUNNEL: JlsStatus[] = ["nije_kontaktiran", "mail_poslan", "odgovorio", "sastanak", "ponuda", "ugovor"];
+
+export type JlsDraftStatus = "nacrt" | "poslano" | "odgovorio" | "sastanak" | "odbaceno";
+export const JLS_DRAFT_STATUS: Record<JlsDraftStatus, { label: string; tone: Tone }> = {
+  nacrt: { label: "Nacrt", tone: "neutral" },
+  poslano: { label: "Poslano", tone: "info" },
+  odgovorio: { label: "Odgovorio", tone: "warning" },
+  sastanak: { label: "Sastanak dogovoren", tone: "success" },
+  odbaceno: { label: "Odbačeno", tone: "outline" },
+};
+
+/** Predlošci e-mailova za JLS prodaju ({jls}, {kontakt}, {natjecaj}, {potpis}). Tekstove potvrđuje vlasnica. */
+export const JLS_TEMPLATES: { key: string; label: string; naslov: string; tekst: string }[] = [
+  {
+    key: "predstavljanje",
+    label: "Predstavljanje EU Radara",
+    naslov: "EU Radar — svi natječaji za {jls} na jednom mjestu",
+    tekst:
+      "Poštovani {kontakt},\n\nIPS Konzalting razvio je EU Radar — servis koji svakodnevno prati EU i nacionalne natječaje i za {jls} izdvaja one na koje se možete prijaviti, s rokovima i podsjetnicima.\n\nRado bismo vam u 20 minuta pokazali koje natječaje trenutno imate otvorene i kako vam možemo pomoći s pripremom prijava.\n\nMožemo li dogovoriti kratak sastanak (uživo ili online)?\n\nLijep pozdrav,\n{potpis}",
+  },
+  {
+    key: "podsjetnik",
+    label: "Podsjetnik (7+ dana bez odgovora)",
+    naslov: "Podsjetnik: EU Radar za {jls}",
+    tekst:
+      "Poštovani {kontakt},\n\nnadovezujem se na prošli e-mail o EU Radaru. Za {jls} trenutno pratimo nekoliko otvorenih natječaja s rokovima u idućim tjednima — rado ću vam poslati pregled bez obveze.\n\nLijep pozdrav,\n{potpis}",
+  },
+  {
+    key: "natjecaj",
+    label: "Konkretan natječaj (signal)",
+    naslov: "Natječaj za {jls}: {natjecaj}",
+    tekst:
+      "Poštovani {kontakt},\n\nobjavljen je natječaj „{natjecaj}“ na koji se {jls} može prijaviti. Možemo preuzeti pripremu prijave i dokumentacije.\n\nŽelite li da vam pošaljemo sažetak uvjeta i procjenu?\n\nLijep pozdrav,\n{potpis}",
+  },
+  {
+    key: "proracun",
+    label: "Proračun za iduću godinu",
+    naslov: "Planiranje EU projekata u proračunu — {jls}",
+    tekst:
+      "Poštovani {kontakt},\n\nuoči prijedloga proračuna za iduću godinu predlažemo da u proračun planirate stavke za pripremu EU projekata i praćenje natječaja (EU Radar). Na taj način možete reagirati čim se natječaj otvori.\n\nRado ćemo pripremiti ponudu prilagođenu vašem proračunu.\n\nLijep pozdrav,\n{potpis}",
+  },
+];
+
+/** Pokazatelji prodaje (Prodajni monitoring / official). */
+export type MetricKey =
+  | "preuzeti" | "doneseni" | "novi" | "upitnik" | "pozivi" | "ponude_poslane" | "ponude_ugovorene" | "ugovoreno" | "stara" | "total";
+export const METRICS: { key: MetricKey; label: string; money?: boolean }[] = [
+  { key: "total", label: "Ukupno ugovoreno (€)", money: true },
+  { key: "ugovoreno", label: "Ugovoreno (€)", money: true },
+  { key: "stara", label: "„Stara“ provedba (€)", money: true },
+  { key: "ponude_ugovorene", label: "Ponude ugovorene / potpisane" },
+  { key: "ponude_poslane", label: "Ponude poslane" },
+  { key: "pozivi", label: "Prodajni pozivi / sastanci" },
+  { key: "upitnik", label: "Upitnik leadovi" },
+  { key: "doneseni", label: "Donijeti leadovi" },
+  { key: "preuzeti", label: "Preuzeti leadovi" },
+  { key: "novi", label: "Novi leadovi u CRM (ukupno)" },
+];
+/** Redoslijed redova u Prodajnom officialu (kao vlasničina Excel tablica). */
+export const OFFICIAL_ROWS: MetricKey[] = [
+  "preuzeti", "doneseni", "novi", "upitnik", "pozivi", "ponude_poslane", "ponude_ugovorene", "ugovoreno", "stara", "total",
+];

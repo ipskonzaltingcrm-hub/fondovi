@@ -208,3 +208,83 @@ export const getProjectOptions = cache(async (): Promise<ProjectOption[]> => {
     .limit(300);
   return (data ?? []) as ProjectOption[];
 });
+
+// ------------------------------------------------------------------ Faza 3
+
+export type Service = {
+  id: string;
+  naziv: string;
+  opis: string | null;
+  kategorija: string;
+  jedinica: string;
+  cijena: number | null;
+  postotak: number | null;
+  pdv: number;
+  aktivan: boolean;
+  position: number;
+};
+export const getServices = cache(async (): Promise<Service[]> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("crm_services")
+    .select("id,naziv,opis,kategorija,jedinica,cijena,postotak,pdv,aktivan,position")
+    .order("position");
+  return (data ?? []) as Service[];
+});
+
+export type CompanyInfo = { naziv: string; oib: string; adresa: string; iban: string; email: string; telefon: string; web: string };
+export const getSettings = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase.from("crm_settings").select("key,value");
+  const map = Object.fromEntries((data ?? []).map((r) => [r.key as string, r.value]));
+  return {
+    company: (map.company ?? {}) as CompanyInfo,
+    offerTerms: ((map.offer_terms as { text?: string } | undefined)?.text ?? "") as string,
+    budgetDeadline: (map.jls_budget_deadline ?? { date: null, label: "" }) as { date: string | null; label: string },
+  };
+});
+
+export type OfferRate = { opis: string; iznos: number | null };
+export type Offer = {
+  id: string;
+  broj: string;
+  predmet: string;
+  jls_profile_id: string | null;
+  lead_id: string | null;
+  project_id: string | null;
+  owner: string | null;
+  status: import("./options").OfferStatus;
+  datum: string;
+  vrijedi_do: string | null;
+  visina_investicije: number | null;
+  rate: OfferRate[];
+  napomene: string | null;
+  razlog_odbijanja: string | null;
+  iznos_neto: number;
+  iznos_pdv: number;
+  iznos_ukupno: number;
+  sent_at: string | null;
+  accepted_at: string | null;
+  archived_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  client?: { naziv: string } | null;
+  lead?: { broj: number; naziv: string } | null;
+  project?: { broj: number; naziv: string } | null;
+};
+export const OFFER_COLS =
+  "id,broj,predmet,jls_profile_id,lead_id,project_id,owner,status,datum,vrijedi_do,visina_investicije,rate,napomene,razlog_odbijanja,iznos_neto,iznos_pdv,iznos_ukupno,sent_at,accepted_at,archived_at,created_by,created_at,client:jls_profiles(naziv),lead:crm_leads(broj,naziv),project:crm_projects(broj,naziv)";
+
+export type OfferItem = {
+  id?: string;
+  service_id: string | null;
+  naziv: string;
+  opis: string | null;
+  kolicina: number;
+  jedinica: string;
+  cijena: number;
+  postotak: number | null;
+  pdv: number;
+  iznos?: number;
+  position?: number;
+};

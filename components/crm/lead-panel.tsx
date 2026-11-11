@@ -7,6 +7,7 @@ import {
   ArchiveRestore,
   Building2,
   CheckSquare,
+  FileText,
   Flame,
   FolderPlus,
   Mail,
@@ -159,6 +160,12 @@ export function LeadPanel({
           <Button size="sm" variant="secondary" onClick={() => setDialog("task")}>
             <CheckSquare className="h-4 w-4" /> Novi zadatak
           </Button>
+          <Link
+            href={`/crm/ponude?nova=1&lead=${lead.id}${lead.jls_profile_id ? `&klijent=${lead.jls_profile_id}` : ""}`}
+            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm font-medium"
+          >
+            <FileText className="h-4 w-4" /> Ponuda
+          </Link>
           {!isSuradnik && (
             <Link
               href={`/crm/projekti?novi=1&lead=${lead.id}${lead.jls_profile_id ? `&klijent=${lead.jls_profile_id}` : ""}`}

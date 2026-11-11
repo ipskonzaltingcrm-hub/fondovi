@@ -52,10 +52,10 @@ export const crmNav: CrmNavGroup[] = [
       { href: "/crm/hot-leadovi", label: "Hot leadovi", icon: Flame, phase: 1, live: true, count: "hot", summary: "Najperspektivniji leadovi složeni po natječaju iz EU Radara." },
       { href: "/crm/hot-pregled", label: "Hot pregled", icon: Grid3x3, phase: 1, live: true, superadminOnly: true, summary: "Tablica hot leadova po natječaju sa semaforom." },
       { href: "/crm/leadovi", label: "Leadovi", icon: Inbox, phase: 1, live: true, count: "leadovi", summary: "Potencijalni pretplatnici (JLS, poduzeća, institucije) i registracije s EU Radara." },
-      { href: "/crm/jls-prodaja", label: "JLS prodaja", icon: Castle, phase: 3, adminOnly: true, summary: "Prodaja pretplate općinama, gradovima i županijama: ciljna skupina, nacrti, signali." },
+      { href: "/crm/jls-prodaja", label: "JLS prodaja", icon: Castle, phase: 3, live: true, adminOnly: true, summary: "Prodaja pretplate općinama, gradovima i županijama: ciljna skupina, nacrti, signali." },
       { href: "/crm/klijenti", label: "Klijenti", icon: Building2, phase: 1, live: true, summary: "Pretplatnici EU Radara — isti zapis kao klijent u aplikaciji, s 360° karticom." },
-      { href: "/crm/ponude", label: "Ponude", icon: FileText, phase: 3, summary: "Paketi pretplate i usluge pripreme projekata; PDF i slanje e-mailom." },
-      { href: "/crm/upitnici", label: "Upitnici", icon: ClipboardList, phase: 3, summary: "Forme na EU Radaru („provjeri na što se možeš prijaviti“) koje stvaraju leadove." },
+      { href: "/crm/ponude", label: "Ponude", icon: FileText, phase: 3, live: true, summary: "Paketi pretplate i usluge pripreme projekata; PDF i slanje e-mailom." },
+      { href: "/crm/upitnici", label: "Upitnici", icon: ClipboardList, phase: 3, live: true, summary: "Forme na EU Radaru („provjeri na što se možeš prijaviti“) koje stvaraju leadove." },
     ],
   },
   {
@@ -69,8 +69,8 @@ export const crmNav: CrmNavGroup[] = [
   {
     label: "Monitoring",
     items: [
-      { href: "/crm/prodajni-official", label: "Prodajni official", icon: Table2, phase: 3, summary: "Tjedna tablica pokazatelja po članu tima." },
-      { href: "/crm/prodaja", label: "Prodajni monitoring", icon: TrendingUp, phase: 3, summary: "Prodaja pretplata i usluga po članu, tjedno i mjesečno." },
+      { href: "/crm/prodajni-official", label: "Prodajni official", icon: Table2, phase: 3, live: true, summary: "Tjedna tablica pokazatelja po članu tima." },
+      { href: "/crm/prodaja", label: "Prodajni monitoring", icon: TrendingUp, phase: 3, live: true, summary: "Prodaja pretplata i usluga po članu, tjedno i mjesečno." },
     ],
   },
   {
