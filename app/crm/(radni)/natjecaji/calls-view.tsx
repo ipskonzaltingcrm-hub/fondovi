@@ -3,18 +3,20 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, BellRing, CheckCheck, ExternalLink, FolderPlus, Search, Star } from "lucide-react";
+import { Archive, ArchiveRestore, BellRing, CheckCheck, ExternalLink, FolderPlus, RefreshCw, Search, Settings2, Sparkles, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Drawer, useFlash } from "@/components/crm/overlay";
-import { Empty, Field, Stat, Table, Tabs, Td, Th, inputClass, selectSmClass, textareaClass } from "@/components/crm/ui";
+import { Drawer, Modal, useFlash } from "@/components/crm/overlay";
+import { Empty, Field, Notice, Stat, Table, Tabs, Td, Th, inputClass, selectSmClass, textareaClass } from "@/components/crm/ui";
 import { createCallTasks, markCallUnread, markCallsRead, setCallMeta } from "@/lib/crm/actions/calls";
+import { runCheckNow, saveTriageSettings } from "@/lib/crm/actions/triage";
+import type { TriageRun, TriageSettings } from "@/lib/crm/triage-shared";
 import type { TeamMember } from "@/lib/crm/data";
 import { RELEVANCE, type Relevance } from "@/lib/crm/options";
 import { VERDICT, type Verdict } from "@/lib/crm/matching";
 import { addDays, daysBetween, fmtDay } from "@/lib/crm/dates";
-import { fmtDate } from "@/lib/crm/format";
+import { fmtDate, fmtDateTime } from "@/lib/crm/format";
 import type { StaffRole } from "@/lib/crm/roles";
 import type { IngestSource } from "@/lib/types";
 import { applicantLabel } from "@/lib/domain";
@@ -42,6 +44,7 @@ export type CallItem = {
   relevance: Relevance;
   autoRelevance: Relevance;
   manual: boolean;
+  ai: { relevance: Relevance; score: number; reason: string | null; sazetak: string | null; at: string } | null;
   prioritet: boolean;
   manualPrioritet: boolean;
   archived: boolean;
@@ -63,13 +66,15 @@ export function CallsView({
   me,
   today,
   openId,
+  triage,
 }: {
   items: CallItem[];
   team: TeamMember[];
   sources: IngestSource[];
-  me: { id: string; role: StaffRole };
+  me: { id: string; role: StaffRole; isAdmin: boolean };
   today: string;
   openId: string | null;
+  triage: { settings: TriageSettings; runs: TriageRun[]; hasKey: boolean };
 }) {
   const router = useRouter();
   const [tab, setTab] = React.useState<Tab>("prioritetno");
@@ -82,6 +87,10 @@ export function CallsView({
   const [pending, start] = React.useTransition();
   const { show, node } = useFlash();
   const canJudge = me.role !== "suradnik";
+  const [triageOpen, setTriageOpen] = React.useState(false);
+  const lastRun = triage.runs[0] ?? null;
+  const running = lastRun?.status === "u_tijeku";
+  const unassessed = items.filter((i) => !i.archived && i.open && !i.ai).length;
 
   const live = items.filter((i) => !i.archived);
   const newCut = addDays(today, -3);
@@ -132,6 +141,61 @@ export function CallsView({
   return (
     <div className="space-y-4">
       {node}
+      <Card className="flex flex-wrap items-center gap-3 p-3">
+        <Sparkles className={cn("h-5 w-5", triage.settings.enabled ? "text-brand-ink" : "text-muted-2")} />
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="font-medium">
+            AI procjena natječaja: {triage.settings.enabled ? (triage.hasKey ? "uključena" : "uključena, ali nema ključa (ANTHROPIC_API_KEY)") : "isključena"}
+          </div>
+          <div className="text-xs text-muted">
+            {lastRun ? (
+              <>
+                Zadnja provjera {fmtDateTime(lastRun.started_at)} ({lastRun.trigger === "rucno" ? "ručno" : "raspored"}):{" "}
+                {running ? (
+                  <span className="text-warning">u tijeku…</span>
+                ) : lastRun.status === "greska" ? (
+                  <span className="text-danger">greška — {lastRun.error}</span>
+                ) : (
+                  <>
+                    {lastRun.ingest?.inserted != null && `novih iz izvora ${lastRun.ingest.inserted}, `}
+                    procijenjeno {lastRun.assessed}, visoko relevantnih {lastRun.relevant}
+                    {lastRun.error ? ` (${lastRun.error})` : ""}
+                  </>
+                )}
+              </>
+            ) : (
+              "Još nije bilo provjere."
+            )}
+            {triage.settings.enabled && unassessed > 0 && ` · čeka procjenu: ${unassessed}`}
+          </div>
+        </div>
+        {canJudge && (
+          <Button
+            size="sm"
+            disabled={pending || running}
+            onClick={() =>
+              start(async () => {
+                const r = await runCheckNow();
+                show(r);
+                if (r.ok) router.refresh();
+              })
+            }
+          >
+            <RefreshCw className={cn("h-4 w-4", running && "animate-spin")} /> {running ? "Provjera u tijeku" : "Provjeri sada"}
+          </Button>
+        )}
+        {running && (
+          <Button size="sm" variant="ghost" onClick={() => router.refresh()}>
+            Osvježi
+          </Button>
+        )}
+        {me.isAdmin && (
+          <Button size="sm" variant="secondary" onClick={() => setTriageOpen(true)}>
+            <Settings2 className="h-4 w-4" /> Postavke AI procjene
+          </Button>
+        )}
+      </Card>
+      {triageOpen && <TriageDialog initial={triage.settings} hasKey={triage.hasKey} onClose={() => setTriageOpen(false)} notify={show} />}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Prioritetno otvoreno" value={tiles.prioritet} />
         <Stat label="Novo relevantno" value={tiles.novo} hint="zadnja 3 dana" />
@@ -244,7 +308,10 @@ export function CallsView({
                           </div>
                         </div>
                         <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
-                          <Badge tone={RELEVANCE[i.relevance].tone}>{RELEVANCE[i.relevance].label}</Badge>
+                          <Badge tone={RELEVANCE[i.relevance].tone}>
+                            {RELEVANCE[i.relevance].label}
+                            {!i.manual && i.ai ? ` · AI ${i.ai.score}` : ""}
+                          </Badge>
                           <span className="text-xs text-muted">
                             {klijenti} klij. · {leadovi} lead.
                           </span>
@@ -330,7 +397,7 @@ function CallDrawer({
           <Badge tone={call.status === "otvoren" ? "success" : call.status === "najava" ? "info" : "neutral"}>{call.status}</Badge>
           <Badge tone={RELEVANCE[call.relevance].tone}>
             {RELEVANCE[call.relevance].label}
-            {call.manual ? " · tim" : " · auto"}
+            {call.manual ? " · tim" : call.ai ? ` · AI ${call.ai.score}` : " · auto"}
           </Badge>
           <span className="text-xs">
             {call.davatelj} · {call.rok ? `rok ${fmtDay(call.rok)}` : "bez roka"}
@@ -358,6 +425,16 @@ function CallDrawer({
         </Button>
       </div>
 
+      {call.ai && (
+        <div className="mb-4 rounded-lg border border-brand/30 bg-brand-soft/40 p-3 text-sm">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-brand-ink">
+            <Sparkles className="h-3.5 w-3.5" /> AI procjena · {RELEVANCE[call.ai.relevance].label} · {call.ai.score}/100
+            {call.manual && <span className="font-normal normal-case text-muted"> (tim je ispravio na {RELEVANCE[call.relevance].label})</span>}
+          </div>
+          {call.ai.reason && <p>{call.ai.reason}</p>}
+          {call.ai.sazetak && <p className="mt-1 text-muted">{call.ai.sazetak}</p>}
+        </div>
+      )}
       {call.sazetak && <p className="mb-4 whitespace-pre-wrap text-sm">{call.sazetak}</p>}
       <dl className="mb-5 grid grid-cols-[150px_1fr] gap-x-3 gap-y-1.5 text-sm">
         <dt className="text-muted">Program</dt>
@@ -390,7 +467,7 @@ function CallDrawer({
 
       {canJudge && (
         <div className="mb-5 rounded-lg border border-border p-3">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-2">Procjena tima</h3>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-2">{call.ai ? "Procjena tima (ispravi AI procjenu)" : "Procjena tima"}</h3>
           <div className="flex flex-wrap gap-1.5">
             {(Object.keys(RELEVANCE) as Relevance[]).map((r) => (
               <button
@@ -421,7 +498,9 @@ function CallDrawer({
             </Button>
           </div>
           <p className="mt-1.5 text-xs text-muted">
-            Automatska procjena: {RELEVANCE[call.autoRelevance].label} (prema prihvatljivim klijentima i leadovima). Ponovni klik na odabranu procjenu vraća automatsku.
+            {call.ai
+              ? `AI procjena: ${RELEVANCE[call.ai.relevance].label}. Procjena tima uvijek ima prednost; ponovni klik na odabranu procjenu vraća AI procjenu.`
+              : `Automatska procjena: ${RELEVANCE[call.autoRelevance].label} (prema prihvatljivim klijentima i leadovima). Ponovni klik na odabranu procjenu vraća automatsku.`}
           </p>
           <Field label="Napomena tima" className="mt-3">
             <textarea rows={2} className={textareaClass} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -485,5 +564,69 @@ function CallDrawer({
         </>
       )}
     </Drawer>
+  );
+}
+
+function TriageDialog({
+  initial,
+  hasKey,
+  onClose,
+  notify,
+}: {
+  initial: TriageSettings;
+  hasKey: boolean;
+  onClose: () => void;
+  notify: (r: { ok: boolean; message?: string; error?: string }) => void;
+}) {
+  const router = useRouter();
+  const [s, setS] = React.useState<TriageSettings>(initial);
+  const [kw, setKw] = React.useState(initial.keywords.join(", "));
+  const [pending, start] = React.useTransition();
+  const save = () =>
+    start(async () => {
+      const r = await saveTriageSettings({ ...s, keywords: kw.split(/[,\n]/) });
+      notify(r);
+      if (r.ok) {
+        onClose();
+        router.refresh();
+      }
+    });
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Postavke AI procjene natječaja"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Odustani
+          </Button>
+          <Button size="sm" disabled={pending} onClick={save}>
+            Spremi
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        {!hasKey && <Notice tone="warning">U Vercelu nedostaje ANTHROPIC_API_KEY — bez njega AI procjena ne radi.</Notice>}
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input type="checkbox" checked={s.enabled} onChange={(e) => setS({ ...s, enabled: e.target.checked })} /> AI procjenjuje nove natječaje
+        </label>
+        <Field label="Opis: što je za nas relevantno (AI procjenjuje prema ovom tekstu)">
+          <textarea className={textareaClass} rows={9} value={s.profile} onChange={(e) => setS({ ...s, profile: e.target.value })} />
+        </Field>
+        <Field label="Ključne riječi (odvojiti zarezom, neobavezno)">
+          <textarea className={textareaClass} rows={2} value={kw} onChange={(e) => setKw(e.target.value)} placeholder="vrtić, energetska obnova, vodoopskrba…" />
+        </Field>
+        <Field label="Mjesečni limit troška (USD)">
+          <input type="number" min={1} max={500} className={inputClass} value={s.limit_usd} onChange={(e) => setS({ ...s, limit_usd: Number(e.target.value) })} />
+        </Field>
+        <p className="text-xs text-muted">
+          Model Claude Opus 5.5 (kao procjena u IPS Hubu). Novi i promijenjeni natječaji procjenjuju se svakih 10 minuta i odmah nakon „Provjeri sada“, u serijama
+          po 8. Procjena tima uvijek ima prednost. Trošak se vidi u Trošak AI-ja (modul „AI procjena natječaja“); kad se dosegne limit, procjena staje do idućeg
+          mjeseca.
+        </p>
+      </div>
+    </Modal>
   );
 }

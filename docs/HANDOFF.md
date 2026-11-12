@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-12** (**EU Radar CRM — Faza 5 objavljena (migracija 0012 primijenjena)**: Chatbot, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke; Faza 4: Korisnici portala, pozivnice klijenata, zatvaranje registracije, pretplate i uplate, Poruke → Obavijesti u EU Radaru; Faza 3: Ponude, Prodaja (monitoring, official), Upitnici (javna forma), JLS prodaja; Faza 2: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
+> Zadnje ažurirano: **2026-11-12** (**EU Radar CRM — Faza 6 objavljena (migracija 0013 primijenjena)**: e-mail (ponude, dnevni podsjetnik timu, tjedni pregled natječaja) i AI trijaža natječaja; **Faza 5 objavljena (migracija 0012 primijenjena)**: Chatbot, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke; Faza 4: Korisnici portala, pozivnice klijenata, zatvaranje registracije, pretplate i uplate, Poruke → Obavijesti u EU Radaru; Faza 3: Ponude, Prodaja (monitoring, official), Upitnici (javna forma), JLS prodaja; Faza 2: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
 
 ---
 
@@ -170,6 +170,9 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
     `auth.users`** za registraciju samo uz pozivnicu, `profiles.portal_blocked_at`, pretplate/uplate, poruke u aplikaciji) — vidi §13.
   - `0012_crm_sustav` — EU Radar CRM Faza 5 (fiksni troškovi, trošak AI-ja, chatbot razgovori, postavke sigurnosti/2FA).
     **primijenjena 2026-11-12** uz odobrenje vlasnice; pravila provjerena u poništenoj transakciji (lead, dedupe, test-razgovor, ovlasti, vlasnik → superadmin dok nema konzultanta).
+  - `0013_crm_email_trijaza` — EU Radar CRM Faza 6 (e-mail dnevnik/postavke/poslovi, javna poveznica ponude, AI trijaža natječaja,
+    **pg_net + pg_cron** posao `crm-tick` svakih 10 min, token u Vaultu `crm_cron_token`). **primijenjena 2026-11-12** uz odobrenje vlasnice;
+    provjerena u poništenoj transakciji (2026-11-12).
 - **RLS model:** globalni katalog (`calls`, `sources`, `call_changes`) čitljiv svim prijavljenima,
   pisanje samo superadmin. Per-tenant tablice (`jls_profiles` itd.) vidljive članovima (`is_member(tenant_id)`)
   ili superadminu (bypass).
@@ -356,7 +359,10 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 - Faza 3 ✅ (2026-11-11): Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
 - Faza 4 ✅ (2026-11-11): Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
 - Faza 5 ✅ objavljena (2026-11-12, migracija 0012 primijenjena): Chatbot brain, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke.
-- **Vlasnica (2026-11-11): ne ići dalje od Faze 5 i ništa ne objavljivati (commit/push/deploy/migracija) bez njezina odobrenja.**
+- Faza 6 ✅ objavljena (2026-11-12, migracija 0013 primijenjena): slanje e-mailova (ponude, podsjetnici za rokove, tjedni pregled
+  natječaja) samo s poddomene `radar.`, i AI trijaža natječaja s gumbom „Provjeri sada“ (kao u IPS Hubu). Vlasnica je 2026-11-12 sama zatražila
+  Fazu 6 i time ukinula raniju odluku „CRM ne šalje e-mailove“.
+- **Vlasnica: ništa ne objavljivati (commit/push/deploy/migracija) bez njezina izričitog odobrenja; ne pokretati novu fazu bez zahtjeva.**
 - Pipeline namjerno izostavljen dok ga vlasnica ne zatraži. Svaka faza završava izvještajem i pregledom vlasnice.
 
 ### Model uloga (migracija `0006_crm_temelj`)
@@ -499,7 +505,7 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 - Izostavljeno iz IPS uzora: Stripe/kartično plaćanje, push (Firebase), automatski podsjetnici i tjedni digest (pg_cron + e-mail
   servis), editor e-maila blokovima, meko brisanje korisnika, „6 mj. bez natječaja“.
 
-### Faza 5 — AI i sustav (2026-11-11, migracija `0012_crm_sustav` — NIJE primijenjena, kod nije commitan)
+### Faza 5 — AI i sustav (2026-11-11, migracija `0012_crm_sustav` — primijenjena i objavljena 2026-11-12, commit 6747033)
 - **Chatbot** (javno `/pitaj`, `?izvor=` za praćenje, `?embed=1` za iframe, `?test=1` testni razgovor tima; CRM `/crm/chatbot`):
   `/api/chat` (GET stanje; POST `message` / `open` / `contact`) radi sa service-role klijentom — posjetitelj nema pristup tablicama.
   Model `claude-sonnet-5` kao u IPS Hubu (napor `low`, automatska predmemorija `cache_control`, zadnji krug `tool_choice: none`, provjera `refusal`),
@@ -523,6 +529,42 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 - **Provjereno:** tsc, eslint (nove datoteke), build; pravila baze u poništenoj transakciji (kontakt iz chatbota → lead + transkript,
   duplikat, testni bez leada, prazan kontakt odbijen, kontakt ne može prijavljeni korisnik ni anon, suradnik bez fiksnih/AI troškova).
   Chatbot s pravim ključem i 2FA nisu isprobani (nema ključa; 2FA traži mobitel vlasnice).
+
+### Faza 6 — e-mail i AI trijaža (2026-11-12, migracija `0013_crm_email_trijaza` — primijenjena i objavljena 2026-11-12)
+- **Slanje e-maila** (`lib/email.ts`): Resend REST API (bez paketa), ključ **`RESEND_API_KEY`** samo u Vercel env. Pošiljatelj se uvijek
+  sastavlja na `@radar.ips-konzalting.hr` (`fromAddress` ne dopušta drugu domenu) → M365 na `ips-konzalting.hr` netaknut, bez DNS promjena
+  (poddomena je već verificirana u Resendu za SMTP prijave). `sendEmail`, `sendBatch` (do 100 po pozivu), okvir `layout`, provjera Svix potpisa.
+- **Ponude e-mailom** (`sendOfferEmail` u `lib/crm/actions/email.ts`, dijalog „Pošalji“ na ponudi — kartica „E-mailom iz CRM-a“ ili, kao prije,
+  „Iz svoje pošte“): od „Ime | IPS Konzalting <ponude@radar…>“, reply-to = konzultant, kopija meni (bcc), tekst + gumb na **javnu poveznicu**
+  `/ponuda/[public_token]` (isti prikaz kao interni PDF — zajednička komponenta `components/crm/offer-document.tsx`; ispis/PDF).
+  Ponuda → Poslana, bilješka „email“ u povijesti, zapis u `crm_email_log`. Prvo otvaranje poveznice (u pregledniku, JS — skeneri pošte ne broje;
+  članovi tima ne broje) → `crm_offer_viewed` (+ bilješka „Klijent je otvorio ponudu“). Na ponudi kartica „E-mail“ (otvaranja + slanja).
+  PDF se ne prilaže (nema PDF-a na serveru) — poveznica ga zamjenjuje.
+- **Automatski e-mailovi** (`lib/crm/email-jobs.ts`), uključuje admin u CRM → Postavke → „E-mail iz aplikacije“ (`crm_settings.email`, zadano **isključeno**):
+  - dnevni podsjetnik timu, radnim danom od 07:00: kasni zadaci, zadaci za danas, rokovi projekata (priprema/dokumentacija) u N dana,
+    ponude pred istekom (3 dana), prioritetni natječaji s rokom u N dana (konzultant+). Bez stavki — bez e-maila. Član ga gasi u „Moje e-mail obavijesti“.
+  - tjedni pregled natječaja korisnicima EU Radara, ponedjeljak od 08:00: novi natječaji (7 dana) za njihove profile (`matchCall`, prihvatljivi
+    iz AI procjene kad postoji) + rokovi u 14 dana; ne konkurenciji ni blokiranima; `List-Unsubscribe` (one-click `/api/odjava`) i poveznica
+    `/odjava?t=` (potvrda gumbom); korisnik ga gasi i u `/postavke`. `crm_email_prefs` (po korisniku, `unsub_token`).
+  - Ključ posla (`podsjetnik:YYYY-MM-DD`, `tjedni:YYYY-Www`) + `crm_email_log.job_key` → nitko ne dobije dvaput.
+- **AI trijaža natječaja** (`lib/crm/triage.ts`, po uzoru na IPS Hub `scripts/natjecaji/ai.ts`): model **`claude-opus-5-5`** (kao procjena u IPS-u),
+  napor `low`, strukturirani izlaz (`output_config.format` json_schema), `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`),
+  predmemorija sustavskog teksta. Serije po 8 natječaja iz `calls` (90 dana, nisu zatvoreni; ponovno kad se tekst promijeni — `input_hash`).
+  Izlaz: relevantnost, ocjena 0–100, razlog, sažetak, prihvatljivi → `crm_call_ai`. Zatvoren nikad „visoka“. Profil/ključne riječi/limit u
+  `crm_settings.call_triage` (Natječaji → „Postavke AI procjene“, admin; zadano **isključeno**, limit 15 USD/mj). Trošak u `crm_ai_usage`
+  (modul `trijaza`; cijene Opus 5.5 $4/$20, predmemorija $0.20/$5). Prikaz: relevantnost = tim > AI > heuristika; značka „AI 82“, okvir s razlogom.
+- **„Provjeri sada“** (Natječaji, konzultant+; `runCheckNow`): zapis u `crm_triage_runs` → u pozadini (`after`) `/api/ingest` (HR izvori, fra1,
+  CRON_SECRET) → `/api/cron/crm?only=triage` (nastavlja se sam do 8 puta). Stanje zadnje provjere na vrhu Natječaja.
+- **Raspored**: `pg_cron` `crm-tick` (*/10) → `crm_cron_tick()` → `pg_net` GET `{crm_settings.app.url}/api/cron/crm` s tokenom iz Vaulta
+  (`crm_cron_token`, nastaje u bazi i ne izlazi iz nje; ruta ga provjerava RPC-om `crm_cron_token_ok`, service role). Ruta prihvaća i CRON_SECRET.
+  Redom: trijaža (≤25 s), podsjetnici, tjedni pregled. Vercel cron za `/api/ingest` ostaje kakav je.
+- **Webhook** (neobavezno): `/api/email/webhook` (Resend → dostavljeno/otvoreno/kliknuto/odbijeno u `crm_email_log`), aktivan tek s
+  `RESEND_WEBHOOK_SECRET` u Vercelu.
+- **Treba u Vercelu:** `RESEND_API_KEY` (Resend → API Keys, dopuštenje „Sending“, domena radar.ips-konzalting.hr), `ANTHROPIC_API_KEY`,
+  po želji `RESEND_WEBHOOK_SECRET`. Zatim u CRM-u uključiti e-mail (Postavke) i AI procjenu (Natječaji).
+- **Provjereno:** tsc, eslint (nove/izmijenjene datoteke), `next build`; migracija u poništenoj transakciji (poveznica ponude, token rasporeda,
+  posao `crm-tick`, RLS postavki/dnevnika, odjava, ovlasti anon/authenticated); pomoćne funkcije (ISO tjedan, adresa pošiljatelja, Svix potpis).
+  **Nije isprobano uživo:** stvarno slanje (nema Resend ključa u aplikaciji) i poziv modela (nema Anthropic ključa).
 
 ### Sigurnosna zakrpa (2026-11-11)
 - Od početka je pravilo `profiles_upd` + ovlast UPDATE nad svim stupcima dopuštalo svakom prijavljenom korisniku

@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export type UsageRow = { id: number; at: string; modul: string; opis: string | null; model: string | null; input_tokens: number; output_tokens: number; cost_usd: number; ref: string | null };
 const usd = new Intl.NumberFormat("hr-HR", { style: "currency", currency: "USD", maximumFractionDigits: 4 });
-const MODUL: Record<string, string> = { chatbot: "Chatbot na webu" };
+const MODUL: Record<string, string> = { chatbot: "Chatbot na webu", trijaza: "AI procjena natječaja" };
 
 export function AiCostView({ rows, credit, cur }: { rows: UsageRow[]; credit: number | null; cur: string }) {
   const months = [...new Set(rows.map((r) => r.at.slice(0, 7)))].sort().reverse();

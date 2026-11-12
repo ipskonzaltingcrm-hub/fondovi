@@ -8,9 +8,12 @@ import { LEAD_OPEN, type Relevance } from "@/lib/crm/options";
 import { addDays, todayZg } from "@/lib/crm/dates";
 import { getSources } from "@/lib/data";
 import type { FundingCall } from "@/lib/types";
+import { DEFAULT_TRIAGE, type TriageRun, type TriageSettings } from "@/lib/crm/triage-shared";
 import { CallsView, type CallItem } from "./calls-view";
 
 export const metadata = { title: "Natječaji" };
+// „Provjeri sada“ u pozadini čeka prikupljanje (do ~60 s).
+export const maxDuration = 60;
 
 type Row = {
   id: string;
@@ -41,7 +44,7 @@ export default async function NatjecajiPage({ searchParams }: PageProps<"/crm/na
   const today = todayZg();
   const supabase = await createClient();
   const since = addDays(today, -400);
-  const [{ data: calls }, { data: meta }, { data: reads }, { data: clients }, { data: leads }, team, sources] = await Promise.all([
+  const [{ data: calls }, { data: meta }, { data: reads }, { data: clients }, { data: leads }, team, sources, { data: aiRows }, { data: triageRow }, { data: runs }] = await Promise.all([
     supabase
       .from("calls")
       .select(
@@ -56,7 +59,12 @@ export default async function NatjecajiPage({ searchParams }: PageProps<"/crm/na
     supabase.from("crm_leads").select(LEAD_COLS).is("archived_at", null).in("status", LEAD_OPEN),
     getTeam(),
     getSources(),
+    supabase.from("crm_call_ai").select("call_id,relevance,score,reason,sazetak,assessed_at"),
+    supabase.from("crm_settings").select("value").eq("key", "call_triage").maybeSingle(),
+    supabase.from("crm_triage_runs").select("id,trigger,status,started_at,finished_at,assessed,relevant,cost_usd,error,ingest").order("started_at", { ascending: false }).limit(5),
   ]);
+  const aiBy = new Map((aiRows ?? []).map((a) => [a.call_id as string, a]));
+  const triage = { ...DEFAULT_TRIAGE, ...((triageRow?.value as Partial<TriageSettings>) ?? {}) };
   await supabase.rpc("crm_mark_seen", { p_key: "natjecaji" });
 
   const metaBy = new Map((meta ?? []).map((m) => [m.call_id as string, m]));
@@ -93,7 +101,8 @@ export default async function NatjecajiPage({ searchParams }: PageProps<"/crm/na
     const clientsEl = matches.filter((m) => m.kind === "klijent");
     const auto = autoRelevance(clientsEl.length, clientsEl[0]?.score ?? 0, matches.length - clientsEl.length);
     const m = metaBy.get(r.id);
-    const relevance = (m?.relevance as Relevance | null) ?? auto;
+    const ai = aiBy.get(r.id);
+    const relevance = (m?.relevance as Relevance | null) ?? (ai?.relevance as Relevance | undefined) ?? auto;
     const expired = r.rok_prijave != null && r.rok_prijave < today;
     return {
       id: r.id,
@@ -116,6 +125,9 @@ export default async function NatjecajiPage({ searchParams }: PageProps<"/crm/na
       relevance,
       autoRelevance: auto,
       manual: !!m?.relevance,
+      ai: ai
+        ? { relevance: ai.relevance as Relevance, score: ai.score as number, reason: (ai.reason as string | null) ?? null, sazetak: (ai.sazetak as string | null) ?? null, at: ai.assessed_at as string }
+        : null,
       prioritet: !!m?.prioritet || (relevance === "visoka" && r.status !== "zatvoren" && !expired),
       manualPrioritet: !!m?.prioritet,
       archived: !!m?.archived_at,
@@ -136,7 +148,8 @@ export default async function NatjecajiPage({ searchParams }: PageProps<"/crm/na
         items={items}
         team={team}
         sources={sources}
-        me={{ id: me.id, role: me.role }}
+        me={{ id: me.id, role: me.role, isAdmin: me.isAdmin }}
+        triage={{ settings: triage, runs: (runs ?? []) as TriageRun[], hasKey: !!process.env.ANTHROPIC_API_KEY }}
         today={today}
         openId={typeof sp.natjecaj === "string" ? sp.natjecaj : null}
       />

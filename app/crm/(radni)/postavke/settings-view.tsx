@@ -11,6 +11,8 @@ import { saveCompany } from "@/lib/crm/actions/offers";
 import { setMfaRequired } from "@/lib/crm/actions/system";
 import type { CompanyInfo } from "@/lib/crm/data";
 
+export type EmailLogRow = { id: number; at: string; vrsta: string; to_email: string; subject: string; status: string; error: string | null };
+
 const WHERE: { what: string; href: string; where: string }[] = [
   { what: "Članovi tima, uloge i pozivnice", href: "/crm/tim", where: "Tim i uloge" },
   { what: "Dvofaktorska prijava, uređaji, odjava ostalih", href: "/crm/sigurnost", where: "Sigurnost" },
@@ -43,7 +45,7 @@ export function SettingsView({
   registration: string;
   mfaRequired: boolean;
   chatbotEnabled: boolean;
-  integrations: { claude: boolean; serviceRole: boolean };
+  integrations: { claude: boolean; serviceRole: boolean; email: boolean; emailEnabled: boolean };
   me: { isAdmin: boolean; isSuperadmin: boolean };
 }) {
   const [c, setC] = React.useState<CompanyInfo>(() => ({
@@ -133,8 +135,12 @@ export function SettingsView({
           <Status ok={integrations.claude} yes={chatbotEnabled ? "Spojeno, chatbot uključen" : "Spojeno, chatbot isključen"} no="Nema ključa (ANTHROPIC_API_KEY)" />
         </div>
         <div className="flex justify-between text-sm">
-          <span>E-mail iz aplikacije (newsletter, podsjetnici)</span>
-          <Status ok={false} yes="" no="Nije spojeno (poruke idu u aplikaciju)" />
+          <span>E-mail iz aplikacije (ponude, podsjetnici, tjedni pregled)</span>
+          <Status
+            ok={integrations.email}
+            yes={integrations.emailEnabled ? "Spojeno (radar.ips-konzalting.hr), automatski e-mailovi uključeni" : "Spojeno (radar.ips-konzalting.hr), automatski e-mailovi isključeni"}
+            no="Nema ključa (RESEND_API_KEY)"
+          />
         </div>
         <div className="flex justify-between text-sm">
           <span>Plaćanje karticom</span>

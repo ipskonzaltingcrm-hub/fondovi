@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Menu, MenuItem, Modal, useFlash } from "@/components/crm/overlay";
 import { Field, Notice, inputClass, textareaClass } from "@/components/crm/ui";
 import { archiveOffer, duplicateOffer, saveOffer, setOfferStatus, type OfferHeader } from "@/lib/crm/actions/offers";
+import { sendOfferEmail } from "@/lib/crm/actions/email";
 import type { Offer, OfferItem, Service, TaskRefs } from "@/lib/crm/data";
 import { JEDINICA, OFFER_STATUS } from "@/lib/crm/options";
 import { fmtDay } from "@/lib/crm/dates";
@@ -18,6 +19,25 @@ import type { StaffRole } from "@/lib/crm/roles";
 import { cn } from "@/lib/utils";
 
 const eur = new Intl.NumberFormat("hr-HR", { style: "currency", currency: "EUR" });
+
+export type OfferMail = {
+  enabled: boolean;
+  defaultTo: string;
+  myEmail: string;
+  myName: string;
+  viewedAt: string | null;
+  viewCount: number;
+  log: { id: number; at: string; to_email: string; subject: string; status: string; error: string | null; opened_at: string | null }[];
+};
+const MAIL_STATUS: Record<string, string> = {
+  poslano: "poslano",
+  dostavljeno: "dostavljeno",
+  otvoreno: "otvoreno",
+  kliknuto: "kliknuto",
+  odbijeno: "odbijeno (adresa ne postoji?)",
+  prituzba: "označeno kao neželjeno",
+  greska: "greška",
+};
 const n = (v: unknown) => {
   const x = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(x) ? x : 0;
@@ -30,6 +50,7 @@ export function OfferEditor({
   refs,
   me,
   today,
+  mail,
 }: {
   offer: Offer;
   items: OfferItem[];
@@ -37,6 +58,7 @@ export function OfferEditor({
   refs: TaskRefs;
   me: { id: string; role: StaffRole };
   today: string;
+  mail: OfferMail;
 }) {
   const router = useRouter();
   const draft = o.status === "nacrt";
@@ -169,7 +191,7 @@ export function OfferEditor({
                 <X className="h-4 w-4" /> Odbijena
               </Button>
               <Button size="sm" variant="ghost" disabled={pending} onClick={() => setDialog("send")}>
-                <Mail className="h-4 w-4" /> Pošalji ponovno
+                <Mail className="h-4 w-4" /> {mail.enabled ? "Pošalji ponovno e-mailom" : "Pošalji ponovno"}
               </Button>
             </>
           )}
@@ -484,6 +506,27 @@ export function OfferEditor({
               <div className="text-xs text-muted">Datum {fmtDay(o.datum)} · vrijedi do {o.vrijedi_do ? fmtDay(o.vrijedi_do) : "—"}</div>
             </div>
           </Card>
+          {(mail.log.length > 0 || mail.viewedAt) && (
+            <Card className="p-4">
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-2">E-mail</h2>
+              {mail.viewedAt ? (
+                <p className="mb-2 text-sm text-success">
+                  Klijent je otvorio ponudu {fmtDateTime(mail.viewedAt)}
+                  {mail.viewCount > 1 ? ` (otvaranja: ${mail.viewCount})` : ""}.
+                </p>
+              ) : (
+                <p className="mb-2 text-sm text-muted">Klijent još nije otvorio poveznicu.</p>
+              )}
+              <ul className="space-y-1.5 text-xs">
+                {mail.log.map((l) => (
+                  <li key={l.id} className={cn(l.status === "greska" || l.status === "odbijeno" ? "text-danger" : "text-muted")}>
+                    {fmtDateTime(l.at)} → {l.to_email} · {MAIL_STATUS[l.status] ?? l.status}
+                    {l.error ? ` — ${l.error}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </aside>
       </div>
 
@@ -491,7 +534,13 @@ export function OfferEditor({
         <SendDialog
           offer={o}
           who={who}
+          mail={mail}
           onClose={() => setDialog(null)}
+          onEmailed={(r) => {
+            setDialog(null);
+            show(r);
+            router.refresh();
+          }}
           onSent={() => {
             setDialog(null);
             status("poslana");
@@ -511,43 +560,135 @@ export function OfferEditor({
   );
 }
 
-function SendDialog({ offer, who, onClose, onSent }: { offer: Offer; who: string; onClose: () => void; onSent: () => void }) {
-  const subject = `Ponuda ${offer.broj} — ${offer.predmet}`;
-  const body = `Poštovani,\n\nu privitku vam šaljemo ponudu ${offer.broj} (${offer.predmet}).\n\nZa sva pitanja stojimo na raspolaganju.\n\nLijep pozdrav`;
+function SendDialog({
+  offer,
+  who,
+  mail,
+  onClose,
+  onSent,
+  onEmailed,
+}: {
+  offer: Offer;
+  who: string;
+  mail: OfferMail;
+  onClose: () => void;
+  onSent: () => void;
+  onEmailed: (r: { ok: true; message?: string } | { ok: false; error: string }) => void;
+}) {
+  const [mode, setMode] = React.useState<"email" | "rucno">(mail.enabled ? "email" : "rucno");
+  const [to, setTo] = React.useState(mail.defaultTo);
+  const [cc, setCc] = React.useState("");
+  const [subject, setSubject] = React.useState(`Ponuda ${offer.broj} — ${offer.predmet}`);
+  const [body, setBody] = React.useState(
+    `Poštovani,\n\nu nastavku vam šaljemo ponudu ${offer.broj} (${offer.predmet}). Ponudu možete pregledati i spremiti kao PDF klikom na gumb ispod.\n\nZa sva pitanja stojimo na raspolaganju.\n\nLijep pozdrav,\n${mail.myName}`,
+  );
+  const [bccSelf, setBccSelf] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [pending, start] = React.useTransition();
+  const manualBody = `Poštovani,\n\nu privitku vam šaljemo ponudu ${offer.broj} (${offer.predmet}).\n\nZa sva pitanja stojimo na raspolaganju.\n\nLijep pozdrav`;
+
+  const send = () =>
+    start(async () => {
+      setError(null);
+      const r = await sendOfferEmail(offer.id, { to, cc, subject, body, bccSelf });
+      if (r.ok) onEmailed(r);
+      else setError(r.error);
+    });
+
   return (
     <Modal
       open
       onClose={onClose}
       title={`Pošalji ponudu ${offer.broj}`}
       footer={
-        <>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Odustani
-          </Button>
-          <Button size="sm" onClick={onSent}>
-            Poslano — označi kao poslanu
-          </Button>
-        </>
+        mode === "email" ? (
+          <>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Odustani
+            </Button>
+            <Button size="sm" disabled={pending || !to.trim()} onClick={send}>
+              <Send className="h-4 w-4" /> {pending ? "Šaljem…" : "Pošalji e-mail"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              Odustani
+            </Button>
+            <Button size="sm" onClick={onSent}>
+              Poslano — označi kao poslanu
+            </Button>
+          </>
+        )
       }
     >
-      <ol className="list-decimal space-y-2 pl-5 text-sm">
-        <li>
-          <a href={`/crm/ponuda-pdf/${offer.id}`} target="_blank" rel="noreferrer" className="font-medium text-brand-ink hover:underline">
-            Otvori PDF
-          </a>{" "}
-          i spremi ga („Ispis / Spremi PDF“).
-        </li>
-        <li>
-          <a
-            href={`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
-            className="font-medium text-brand-ink hover:underline"
-          >
-            Otvori e-poštu
-          </a>{" "}
-          s pripremljenim tekstom, priloži PDF i pošalji {who ? `(${who})` : ""} iz svoje pošte.
-        </li>
-        <li>Klikni „Poslano“ — ponuda postaje Poslana, a lead prelazi u status „Ponuda“.</li>
-      </ol>
+      <div className="mb-3 flex gap-1 rounded-md bg-surface-2 p-1 text-sm">
+        <button
+          type="button"
+          disabled={!mail.enabled}
+          onClick={() => setMode("email")}
+          className={cn("flex-1 rounded px-2 py-1", mode === "email" ? "bg-surface font-medium shadow-sm" : "text-muted", !mail.enabled && "opacity-50")}
+        >
+          E-mailom iz CRM-a
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("rucno")}
+          className={cn("flex-1 rounded px-2 py-1", mode === "rucno" ? "bg-surface font-medium shadow-sm" : "text-muted")}
+        >
+          Iz svoje pošte
+        </button>
+      </div>
+      {mode === "email" ? (
+        <div className="space-y-3">
+          <Field label="Primatelj">
+            <input className={inputClass} type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="ime@primjer.hr" />
+          </Field>
+          <Field label="Kopija (neobavezno, odvojiti zarezom)">
+            <input className={inputClass} value={cc} onChange={(e) => setCc(e.target.value)} />
+          </Field>
+          <Field label="Naslov">
+            <input className={inputClass} value={subject} onChange={(e) => setSubject(e.target.value)} />
+          </Field>
+          <Field label="Poruka">
+            <textarea className={textareaClass} rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
+          </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={bccSelf} onChange={(e) => setBccSelf(e.target.checked)} /> Pošalji kopiju i meni ({mail.myEmail})
+          </label>
+          <p className="text-xs text-muted">
+            Šalje se s adrese ponude@radar.ips-konzalting.hr u ime „{mail.myName} | IPS Konzalting“; odgovori stižu na vaš e-mail. Poruka sadrži gumb s poveznicom na
+            ponudu (pregled i PDF). Kad je klijent otvori, to se vidi na ponudi i u povijesti{who ? ` (${who})` : ""}.
+          </p>
+          {error && <Notice tone="danger">{error}</Notice>}
+        </div>
+      ) : (
+        <>
+          {!mail.enabled && (
+            <div className="mb-3">
+              <Notice>Slanje e-mailom iz CRM-a uključuje se kad se u Vercel upiše RESEND_API_KEY.</Notice>
+            </div>
+          )}
+          <ol className="list-decimal space-y-2 pl-5 text-sm">
+            <li>
+              <a href={`/crm/ponuda-pdf/${offer.id}`} target="_blank" rel="noreferrer" className="font-medium text-brand-ink hover:underline">
+                Otvori PDF
+              </a>{" "}
+              i spremi ga („Ispis / Spremi PDF“).
+            </li>
+            <li>
+              <a
+                href={`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(manualBody)}`}
+                className="font-medium text-brand-ink hover:underline"
+              >
+                Otvori e-poštu
+              </a>{" "}
+              s pripremljenim tekstom, priloži PDF i pošalji {who ? `(${who})` : ""} iz svoje pošte.
+            </li>
+            <li>Klikni „Poslano“ — ponuda postaje Poslana, a lead prelazi u status „Ponuda“.</li>
+          </ol>
+        </>
+      )}
     </Modal>
   );
 }
