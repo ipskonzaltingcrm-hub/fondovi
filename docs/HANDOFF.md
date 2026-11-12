@@ -2,7 +2,7 @@
 
 > **Svrha:** jedini izvor istine o projektu. Novi chat/agent prvo pročita ovaj dokument i ima potpun kontekst.
 > **Održavanje:** ažurira se nakon svake značajne promjene (nova faza, nova infra, promjena odluke).
-> Zadnje ažurirano: **2026-11-11** (**EU Radar CRM — Faza 4 gotova**: Korisnici portala, pozivnice klijenata, zatvaranje registracije, pretplate i uplate, Poruke → Obavijesti u EU Radaru; Faza 3: Ponude, Prodaja (monitoring, official), Upitnici (javna forma), JLS prodaja; Faza 2: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
+> Zadnje ažurirano: **2026-11-12** (**EU Radar CRM — Faza 5 objavljena (migracija 0012 primijenjena)**: Chatbot, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke; Faza 4: Korisnici portala, pozivnice klijenata, zatvaranje registracije, pretplate i uplate, Poruke → Obavijesti u EU Radaru; Faza 3: Ponude, Prodaja (monitoring, official), Upitnici (javna forma), JLS prodaja; Faza 2: Natječaji, EU Filter, Projekti i prijave; Faza 1: Leadovi, Klijenti, Zadaci, Moj dan, Hot leadovi, Hot pregled; Faza 0: uloge, Tim, Sigurnost, Dnevnik; **sigurnosna zakrpa `profiles`** — vidi §13).
 
 ---
 
@@ -168,6 +168,8 @@ Supabase (Postgres 17 + Auth + RLS) · hosting Vercel · repo GitHub. Sve odvoje
     formom — `crm_form_info`/`crm_form_submit` dostupni **anon**, JLS prodaja, `crm_settings`) — vidi §13.
   - `0011_crm_portal` — EU Radar CRM Faza 4 (korisnici portala, pozivnice klijenata, **okidač `crm_signup_guard` na
     `auth.users`** za registraciju samo uz pozivnicu, `profiles.portal_blocked_at`, pretplate/uplate, poruke u aplikaciji) — vidi §13.
+  - `0012_crm_sustav` — EU Radar CRM Faza 5 (fiksni troškovi, trošak AI-ja, chatbot razgovori, postavke sigurnosti/2FA).
+    **primijenjena 2026-11-12** uz odobrenje vlasnice; pravila provjerena u poništenoj transakciji (lead, dedupe, test-razgovor, ovlasti, vlasnik → superadmin dok nema konzultanta).
 - **RLS model:** globalni katalog (`calls`, `sources`, `call_changes`) čitljiv svim prijavljenima,
   pisanje samo superadmin. Per-tenant tablice (`jls_profiles` itd.) vidljive članovima (`is_member(tenant_id)`)
   ili superadminu (bypass).
@@ -353,7 +355,8 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
 - Faza 2 ✅ (2026-11-11): Natječaji (CRM pogled na `calls`), EU Filter, Projekti i prijave.
 - Faza 3 ✅ (2026-11-11): Ponude, JLS prodaja, Upitnici, Prodajni monitoring, Prodajni official.
 - Faza 4 ✅ (2026-11-11): Korisnici portala (korisnici EU Radara, pretplate, **zatvaranje otvorene registracije**), Poruke i newsletter, naplata.
-- Faza 5: Chatbot brain, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke (prave, ne prototip).
+- Faza 5 ✅ objavljena (2026-11-12, migracija 0012 primijenjena): Chatbot brain, Trošak AI-ja, Fiksni troškovi, 2FA, Postavke.
+- **Vlasnica (2026-11-11): ne ići dalje od Faze 5 i ništa ne objavljivati (commit/push/deploy/migracija) bez njezina odobrenja.**
 - Pipeline namjerno izostavljen dok ga vlasnica ne zatraži. Svaka faza završava izvještajem i pregledom vlasnice.
 
 ### Model uloga (migracija `0006_crm_temelj`)
@@ -495,6 +498,31 @@ Kasnije vlastita domena (npr. `crm.radar.ips-konzalting.hr` → `/crm` preko pro
   poruke probno/stvarno/zaključavanje/pročitano, blokada, suradnik bez pristupa); tsc, build. Nije klikom provjereno nakon prijave.
 - Izostavljeno iz IPS uzora: Stripe/kartično plaćanje, push (Firebase), automatski podsjetnici i tjedni digest (pg_cron + e-mail
   servis), editor e-maila blokovima, meko brisanje korisnika, „6 mj. bez natječaja“.
+
+### Faza 5 — AI i sustav (2026-11-11, migracija `0012_crm_sustav` — NIJE primijenjena, kod nije commitan)
+- **Chatbot** (javno `/pitaj`, `?izvor=` za praćenje, `?embed=1` za iframe, `?test=1` testni razgovor tima; CRM `/crm/chatbot`):
+  `/api/chat` (GET stanje; POST `message` / `open` / `contact`) radi sa service-role klijentom — posjetitelj nema pristup tablicama.
+  Model `claude-sonnet-5` kao u IPS Hubu (napor `low`, automatska predmemorija `cache_control`, zadnji krug `tool_choice: none`, provjera `refusal`),
+  alat `trazi_natjecaje` (pretraga `calls`). Upute = 8 polja u `crm_settings.chatbot_brain`; postavke u `crm_settings.chatbot`
+  (uključenost, ime, pozdrav, najviše pitanja, kontakt od pitanja, mjesečni limit USD). Zaštite: 20 novih razgovora/IP/sat,
+  limit troška (tada samo obrazac za kontakt), najviše pitanja po razgovoru. Kontakt → `crm_chat_contact` (service role):
+  lead izvor `ai_asistent` (duplikat po e-mailu / zadnjih 8 znamenki telefona dopunjuje otvoreni lead), transkript u povijest,
+  zadatak „Nazovi: … (chatbot)“ vlasniku. Testni razgovori ne stvaraju lead. **Treba `ANTHROPIC_API_KEY`** u Vercelu i `.env.local`
+  — bez njega chatbot pokazuje samo obrazac za kontakt. SDK `@anthropic-ai/sdk` 1.8.0. Kod: `lib/crm/chatbot.ts` (server),
+  `lib/crm/chatbot-shared.ts` (polja/postavke, bez SDK-a), `app/api/chat/route.ts`, `app/pitaj/*`.
+- `crm_next_lead_owner()` sada kao posljednju opciju uzima superadmina (dok u timu nema konzultanta/administratora).
+- **Trošak AI-ja** (`/crm/trosak-ai`, admin): `crm_ai_usage` (svaki odgovor chatbota: tokeni, USD po cijenama Sonnet 5:
+  $2/$10 po MTok, predmemorija $0.20/$2.50), filtri po mjesecu i modulu, „Kredit za Claude“ (`crm_settings.claude_credit`).
+- **Fiksni troškovi** (`/crm/fiksni-troskovi`, admin): `crm_fixed_costs` (kategorija, dobavljač, iznos, učestalost, od/do, dan plaćanja),
+  mjesečno/godišnje, po kategoriji, predložene stavke; uklanjanje = arhiva. Nema plaća (nema evidencije zaposlenika).
+- **2FA** (TOTP, Supabase MFA): kartica u Sigurnosti (`components/crm/mfa-card.tsx` — uključi preko QR koda, isključi).
+  `app/crm/(radni)/layout.tsx`: član koji ima 2FA mora upisati kod (`/crm/2fa`); kad je `crm_settings.security.mfa_required`
+  (uključuje superadmin u Postavkama), član bez 2FA mora je postaviti prije ulaska u CRM.
+- **Postavke** (`/crm/postavke`): podaci tvrtke (PDF ponude), sigurnost (registracija, obavezna 2FA), stanje integracija (Claude ključ,
+  service role, e-mail i kartice nisu spojeni), popis gdje su ostale postavke.
+- **Provjereno:** tsc, eslint (nove datoteke), build; pravila baze u poništenoj transakciji (kontakt iz chatbota → lead + transkript,
+  duplikat, testni bez leada, prazan kontakt odbijen, kontakt ne može prijavljeni korisnik ni anon, suradnik bez fiksnih/AI troškova).
+  Chatbot s pravim ključem i 2FA nisu isprobani (nema ključa; 2FA traži mobitel vlasnice).
 
 ### Sigurnosna zakrpa (2026-11-11)
 - Od početka je pravilo `profiles_upd` + ovlast UPDATE nad svim stupcima dopuštalo svakom prijavljenom korisniku

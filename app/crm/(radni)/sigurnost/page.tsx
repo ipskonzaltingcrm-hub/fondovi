@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/layout/page-header";
+import { MfaCard } from "@/components/crm/mfa-card";
 import { createClient } from "@/lib/supabase/server";
 import { requireStaff } from "@/lib/crm/session";
 import type { StaffRole } from "@/lib/crm/roles";
@@ -37,8 +38,11 @@ export default async function SigurnostPage({ searchParams }: PageProps<"/crm/si
     <>
       <PageHeader
         title="Sigurnost"
-        description="Na kojim su uređajima otvorene tvoje prijave i tko se iz tima kada prijavio. Dvofaktorska prijava (kod s mobitela) stiže u Fazi 5."
+        description="Dvofaktorska prijava, uređaji na kojima su otvorene tvoje prijave i tko se iz tima kada prijavio."
       />
+      <div className="mb-4">
+        <MfaCard />
+      </div>
       <SecurityView
         me={{ id: me.id, isAdmin: me.isAdmin, isSuperadmin: me.isSuperadmin }}
         mine={(mine ?? []) as SessionRow[]}

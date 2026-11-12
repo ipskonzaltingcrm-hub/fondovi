@@ -34,7 +34,7 @@ export type CrmNavItem = {
   /** Kartica već radi (inače je u izborniku kao "uskoro"). */
   live?: boolean;
   /** Ključ brojke u izborniku (crm_nav_counts). */
-  count?: "leadovi" | "hot" | "zadaci" | "natjecaji" | "korisnici";
+  count?: "leadovi" | "hot" | "zadaci" | "natjecaji" | "korisnici" | "chatbot";
   adminOnly?: boolean;
   superadminOnly?: boolean;
   /** Što kartica radi — prikaz na početnoj i na stranici "uskoro". */
@@ -61,7 +61,7 @@ export const crmNav: CrmNavGroup[] = [
   {
     label: "EU Radar portal",
     items: [
-      { href: "/crm/chatbot", label: "Chatbot brain", icon: Bot, phase: 5, summary: "AI asistent u EU Radaru: upute, dokumenti, razgovori, kontakt → lead." },
+      { href: "/crm/chatbot", label: "Chatbot brain", icon: Bot, phase: 5, live: true, count: "chatbot", summary: "AI asistent u EU Radaru: upute, dokumenti, razgovori, kontakt → lead." },
       { href: "/crm/korisnici-portala", label: "Korisnici portala", icon: Smartphone, phase: 4, live: true, count: "korisnici", summary: "Korisnici EU Radara: pretplate, pozivnice, uplate, kontrola registracije." },
       { href: "/crm/poruke", label: "Poruke i newsletter", icon: MailPlus, phase: 4, live: true, summary: "Obavijesti pretplatnicima: novi natječaji po profilu, podsjetnici na rokove." },
     ],
@@ -87,9 +87,9 @@ export const crmNav: CrmNavGroup[] = [
       { href: "/crm/tim", label: "Tim i uloge", icon: Users, phase: 0, live: true, summary: "Članovi tima, pozivnice, uloge i ovlasti." },
       { href: "/crm/sigurnost", label: "Sigurnost", icon: ShieldCheck, phase: 0, live: true, summary: "Moje prijave i uređaji; nadzor prijava tima za administratore." },
       { href: "/crm/dnevnik", label: "Dnevnik izmjena", icon: History, phase: 0, live: true, adminOnly: true, summary: "Tko je što pregledao, mijenjao i izvezao." },
-      { href: "/crm/fiksni-troskovi", label: "Fiksni troškovi", icon: Receipt, phase: 5, adminOnly: true, summary: "Ponavljajući troškovi poslovanja." },
-      { href: "/crm/trosak-ai", label: "Trošak AI-ja", icon: Wallet, phase: 5, adminOnly: true, summary: "Potrošnja na Claude API po modulu." },
-      { href: "/crm/postavke", label: "Postavke", icon: Settings, phase: 5, summary: "Prave postavke CRM-a i EU Radara na jednom mjestu." },
+      { href: "/crm/fiksni-troskovi", label: "Fiksni troškovi", icon: Receipt, phase: 5, live: true, adminOnly: true, summary: "Ponavljajući troškovi poslovanja." },
+      { href: "/crm/trosak-ai", label: "Trošak AI-ja", icon: Wallet, phase: 5, live: true, adminOnly: true, summary: "Potrošnja na Claude API po modulu." },
+      { href: "/crm/postavke", label: "Postavke", icon: Settings, phase: 5, live: true, summary: "Prave postavke CRM-a i EU Radara na jednom mjestu." },
     ],
   },
 ];

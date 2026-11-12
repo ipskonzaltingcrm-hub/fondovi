@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { CrmSidebar } from "@/components/crm/crm-sidebar";
 import { CrmTopbar } from "@/components/crm/crm-topbar";
 import { requireStaff } from "@/lib/crm/session";
@@ -11,6 +12,15 @@ export const metadata: Metadata = {
 
 export default async function CrmLayout({ children }: LayoutProps<"/crm">) {
   const me = await requireStaff();
+
+  // Dvofaktorska prijava: tko ima 2FA mora upisati kod; kad je 2FA obavezna, tko je nema mora je postaviti.
+  const supa = await createClient();
+  const [{ data: aal }, { data: sec }] = await Promise.all([
+    supa.auth.mfa.getAuthenticatorAssuranceLevel(),
+    supa.from("crm_settings").select("value").eq("key", "security").maybeSingle(),
+  ]);
+  if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") redirect("/crm/2fa");
+  if ((sec?.value as { mfa_required?: boolean } | null)?.mfa_required && aal?.nextLevel !== "aal2") redirect("/crm/2fa");
 
   // Evidencija prijava tima (prva pojava sesije = nova prijava; bilježi se i u Dnevnik).
   const h = await headers();
